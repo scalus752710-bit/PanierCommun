@@ -1183,7 +1183,7 @@ R.equipe=function(){
   const missionModal=(k,def)=>{
     const p=k!=null?S.planning[k]:{jour:def?.jour||1,creneau:def?.creneau||"Matin",qui:S.equipe[0]?.id,mission:"Caisse"};
     modal(k!=null?"Modifier la mission":"Ajouter une mission",`<div class="form"><label>Membre<select id="mq">${S.equipe.map(e=>`<option value="${e.id}" ${e.id===p.qui?"selected":""}>${esc(e.nom)}</option>`).join("")}</select></label>
-      <label>Mission<input type="text" id="mm" value="${esc(p.mission)}" list="missl"><datalist id="missl">${[...new Set(S.planning.map(x=>x.mission))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
+      <label>Mission<input type="text" id="mm" value="${esc(p.mission)}" list="missl"><datalist id="missl">${[...new Set([...S.planning.map(x=>x.mission),"Mise en stock","Inventaire"].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr")).map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
       <label>Jour<select id="mj">${jours.map((j,i)=>`<option value="${i+1}" ${i+1===p.jour?"selected":""}>${j}</option>`).join("")}</select></label>
       <label>Créneau<select id="mc">${["Matin","Après-midi"].map(c=>`<option ${c===p.creneau?"selected":""}>${c}</option>`).join("")}</select></label></div>`,
       `${k!=null?`<button class="btn danger" id="delM" style="margin-right:auto">Supprimer</button>`:""}<button class="btn" data-close>Annuler</button><button class="btn primary" id="okM">${k!=null?"Enregistrer":"Ajouter"}</button>`);
