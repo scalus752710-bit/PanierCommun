@@ -553,7 +553,7 @@ R.foyers=function(){
     return true;
   });
   V().innerHTML=`
-  <div class="head"><div><h1>Gestion Bénéficiaires</h1><p>Composition et droits d'accès de chaque foyer.</p></div><button class="btn primary" id="addF">Nouveau foyer</button></div>
+  <div class="head"><div><h1>Gestion Bénéficiaires</h1><p>Composition et droits d'accès de chaque foyer.</p></div><button class="btn primary" id="addF">Nouveau Bénéficiaire</button></div>
   <div class="panel">
     <div class="toolbar"><input type="search" id="fq" placeholder="Rechercher un nom…" value="${esc(fQuery)}" aria-label="Rechercher">
       <div class="seg" role="group" aria-label="Filtre">${[["tous","Tous"],["actifs","Accès actif"],["expires","Sans accès"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${fFilter===k}">${l}</button>`).join("")}</div></div>
@@ -575,7 +575,7 @@ function accessPill(a){ if(!a.on) return `<span class="pill neutral">Non accord�
 function foyerModal(id){
   const f=id?S.foyers.find(x=>x.id===id):{id:uid(),nom:"",prenom:"",adultes:1,enfants:[],situation:"Seul",csp:"",revenus:0,charges:0,epi:{on:true,fin:"",plafond:0},bou:{on:true,fin:"",plafond:0}};
   const hist=S.ventes.filter(v=>v.foyer===f.id);
-  const m=modal(id?`${f.prenom} ${f.nom}`:"Nouveau foyer",`
+  const m=modal(id?`${f.prenom} ${f.nom}`:"Nouveau Bénéficiaire",`
     <div id="ravBox" hidden></div>
     <div class="form" style="margin-top:14px">
       <label>Prénom<input type="text" id="fp" value="${esc(f.prenom)}"></label>
