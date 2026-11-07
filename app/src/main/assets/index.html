@@ -329,9 +329,9 @@ function seed(){
   ];
   const equipe=[
     {id:"e1",nom:"Chantal Vasseur",role:"Coordinatrice",statut:"Salariée",tel:"06 12 48 77 20"},
-    {id:"e2",nom:"Michel Dubois",role:"Animatrice",statut:"Bénévole",tel:"06 31 22 90 14"},
+    {id:"e2",nom:"Michel Dubois",role:"Animateur",statut:"Bénévole",tel:"06 31 22 90 14"},
     {id:"e3",nom:"Nadia Ferhat",role:"Animatrice",statut:"Bénévole",tel:"07 68 10 55 03"},
-    {id:"e4",nom:"Gérard Lemaire",role:"Facturation",statut:"Bénévole",tel:"06 77 41 08 62"},
+    {id:"e4",nom:"Gérard Lemaire",role:"Chargé de facturation",statut:"Bénévole",tel:"06 77 41 08 62"},
     {id:"e5",nom:"Inès Carpentier",role:"Directrice",statut:"Bénévole",tel:"06 50 19 33 47"}
   ];
   const planning=[
@@ -1324,14 +1324,18 @@ function syncInit(){
 }
 
 /* ---------- Accès par code PIN ---------- */
-const ROLES=["Coordinatrice","Directrice","Animatrice","Facturation"];
+const ROLES=["Coordinatrice","Coordinateur","Directrice","Directeur","Animatrice","Animateur","Chargée de facturation","Chargé de facturation"];
+// Le masculin partage les accès du féminin (clé commune)
+const ROLE_KEY={"Coordinateur":"Coordinatrice","Directeur":"Directrice","Animateur":"Animatrice","Chargée de facturation":"Facturation","Chargé de facturation":"Facturation"};
+const ROLE_LBL={"Coordinatrice":"Coordinatrice / Coordinateur","Directrice":"Directrice / Directeur","Animatrice":"Animatrice / Animateur","Facturation":"Chargée / Chargé de facturation"};
+const rk=r=>ROLE_KEY[String(r||"").trim()]||String(r||"").trim();
 const ACC_DEF={"Coordinatrice":VIEWS.map(v=>v[0]),"Directrice":VIEWS.map(v=>v[0]),"Animatrice":["tableau","foyers","caisse"],"Facturation":["tableau","caisse","facturation","rapports"]};
 const WHO_KEY=KEY+"-qui", LOCK_MIN=10;
 const isAdmin=e=>!!e&&/^coordinat/i.test(String(e.role||"").trim());
 const pinHash=(id,pin)=>hashOf("pin|"+id+"|"+pin);
 const lockOn=()=>S.equipe.some(e=>isAdmin(e)&&e.pin);
-const roles=()=>[...new Set([...ROLES,...S.equipe.map(e=>String(e.role||"").trim()).filter(Boolean)])];
-const accesRole=r=>/^coordinat/i.test(r)?VIEWS.map(v=>v[0]):((S.acces&&S.acces[r])||ACC_DEF[r]||["tableau"]);
+const roles=()=>[...new Set([...ROLES,...S.equipe.map(e=>String(e.role||"").trim()).filter(Boolean)].map(rk))];
+const accesRole=r=>{ r=rk(r); return /^coordinat/i.test(r)?VIEWS.map(v=>v[0]):((S.acces&&S.acces[r])||ACC_DEF[r]||["tableau"]); };
 let WHO=null; try{ const w=JSON.parse(localStorage.getItem(WHO_KEY)); if(w&&Date.now()-w.t<LOCK_MIN*60000) WHO=w.id; }catch(e){}
 const me=()=>S.equipe.find(e=>e.id===WHO)||null;
 const canSee=k=>!lockOn()||(me()&&accesRole(me().role).includes(k));
@@ -1380,13 +1384,13 @@ function accesPanel(){
   const rs=roles().filter(r=>!/^coordinat/i.test(r));
   return `<div class="panel" style="margin-top:16px"><h2 style="margin-bottom:4px">Accès par rôle</h2><p class="muted" style="font-size:.85rem;margin:0 0 10px">Cochez les écrans que chaque rôle peut ouvrir. La Coordinatrice a toujours accès à tout. Les codes PIN se règlent en touchant un membre.</p>
   <div class="tbl-wrap"><table class="acc-tbl"><thead><tr><th>Rôle</th>${VIEWS.map(v=>`<th class="c">${esc(v[1])}</th>`).join("")}</tr></thead><tbody>
-  ${rs.map(r=>`<tr><td><b>${esc(r)}</b></td>${VIEWS.map(([k,l])=>`<td class="c"><input type="checkbox" data-acc="${esc(r)}|${k}" ${accesRole(r).includes(k)?"checked":""} aria-label="${esc(r)} : ${esc(l)}"></td>`).join("")}</tr>`).join("")}
+  ${rs.map(r=>`<tr><td><b>${esc(ROLE_LBL[r]||r)}</b></td>${VIEWS.map(([k,l])=>`<td class="c"><input type="checkbox" data-acc="${esc(r)}|${k}" ${accesRole(r).includes(k)?"checked":""} aria-label="${esc(r)} : ${esc(l)}"></td>`).join("")}</tr>`).join("")}
   </tbody></table></div></div>`;
 }
 function bindAcces(){
   V().querySelectorAll("[data-acc]").forEach(c=>c.onchange=()=>{
     const [r,k]=c.dataset.acc.split("|"); S.acces=S.acces||{}; const cur=new Set(accesRole(r));
-    if(c.checked) cur.add(k); else cur.delete(k); S.acces[r]=VIEWS.map(v=>v[0]).filter(x=>cur.has(x)); save(); toast(`Accès de « ${r} » mis à jour`);
+    if(c.checked) cur.add(k); else cur.delete(k); S.acces[r]=VIEWS.map(v=>v[0]).filter(x=>cur.has(x)); save(); toast(`Accès de « ${ROLE_LBL[r]||r} » mis à jour`);
   });
 }
 
