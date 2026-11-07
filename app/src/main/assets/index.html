@@ -710,7 +710,7 @@ R.caisse=function(){
       ${cart.length?`<div class="saving">Économie solidaire pour le bénéficiaire : ${eur(val-tot)}</div>`:""}
       ${over?`<div class="alert bad">Plafond dépassé de ${eur(tot-reste)}. Retirez des articles avant d'encaisser.</div>`:""}
       <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
-        <div class="seg" role="group" aria-label="Paiement" style="width:100%">${[["especes","Espèces"],["carte","Carte"],["mixte","Mixte"]].map(([k,l])=>`<button style="flex:1" data-pay="${k}" aria-pressed="${cPay===k}">${l}</button>`).join("")}</div>
+        <div class="seg" role="group" aria-label="Paiement" style="width:100%">${[["especes","Espèces"],["carte","Carte"],["cheque","Chèque"],["mixte","Mixte"]].map(([k,l])=>`<button style="flex:1" data-pay="${k}" aria-pressed="${cPay===k}">${l}</button>`).join("")}</div>
         <button class="btn primary" id="enc" ${!f||!cart.length||over?"disabled":""}>Encaisser ${cart.length?eur(tot):""}</button>
       </div>
     </div>
@@ -739,7 +739,7 @@ R.caisse=function(){
 };
 
 /* ---------- Facturation : tickets de caisse classés par jour ---------- */
-const PAY={especes:"Espèces",carte:"Carte",mixte:"Mixte"};
+const PAY={especes:"Espèces",carte:"Carte",cheque:"Chèque",mixte:"Mixte"};
 const payL=v=>PAY[v.paiement]||"—";
 const ticketNo=v=>{ const same=S.ventes.filter(x=>x.date===v.date); return "T"+v.date.replace(/-/g,"")+"-"+String(same.indexOf(v)+1).padStart(3,"0"); };
 const nbArt=v=>v.lignes.reduce((a,l)=>a+l.q,0);
@@ -759,7 +759,7 @@ R.facturation=function(){
   const sum=(a,f)=>a.reduce((s,v)=>s+f(v),0);
   const RZ=S.raz.fact||{};
   const kl=k=>{ const ex=new Set(RZ[k]||[]); return list.filter(v=>!ex.has(v.id)); };
-  const kT=kl("tickets"), kM=kl("total"), kE=kl("especes"), kC=kl("carte");
+  const kT=kl("tickets"), kM=kl("total"), kE=kl("especes"), kC=kl("carte"), kQ=kl("cheque");
   const rz=k=>`<button class="btn small" data-frz="${k}" style="margin-top:10px">Remettre à zéro</button>`;
   V().innerHTML=`
   <div class="head"><div><h1>Facturation</h1><p>Tous les tickets de caisse, classés par jour.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${hidM.length?`<button class="btn small" id="fRest">Rétablir les journées effacées (${new Set(hidM.map(v=>v.date)).size})</button>`:""}${keys.length?`<button class="btn small danger" id="fDelAll">Effacer toutes les journées du mois</button>`:""}</div></div>
@@ -768,11 +768,12 @@ R.facturation=function(){
     <label>Paiement<select id="fP">${[["tous","Tous"],...Object.entries(PAY)].map(([k,l])=>`<option value="${k}" ${k===fPay?"selected":""}>${l}</option>`).join("")}</select></label>
     <label style="flex:2 1 200px">Rechercher<input type="search" id="fQ" value="${esc(fQ)}" placeholder="N° de ticket, bénéficiaire ou caissier"></label>
   </div>
-  <div class="grid g4" style="margin-bottom:16px">
+  <div class="grid" style="margin-bottom:16px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
     <div class="panel kpi"><div class="eyebrow">Tickets</div><div class="v num">${kT.length}</div><div class="s">${new Set(kT.map(v=>v.date)).size} jour${new Set(kT.map(v=>v.date)).size>1?"s":""} d'ouverture</div>${rz("tickets")}</div>
     <div class="panel kpi"><div class="eyebrow">Total encaissé</div><div class="v num">${eur(sum(kM,v=>v.paye))}</div><div class="s">Valeur distribuée : ${eur(sum(kM,v=>v.valeur))}</div>${rz("total")}</div>
     <div class="panel kpi"><div class="eyebrow">Espèces</div><div class="v num">${eur(sum(kE.filter(v=>v.paiement==="especes"),v=>v.paye))}</div><div class="s">Mixte : ${eur(sum(kE.filter(v=>v.paiement==="mixte"),v=>v.paye))}</div>${rz("especes")}</div>
     <div class="panel kpi"><div class="eyebrow">Carte</div><div class="v num">${eur(sum(kC.filter(v=>v.paiement==="carte"),v=>v.paye))}</div><div class="s">Non précisé : ${eur(sum(kC.filter(v=>!PAY[v.paiement]),v=>v.paye))}</div>${rz("carte")}</div>
+    <div class="panel kpi"><div class="eyebrow">Chèque</div><div class="v num">${eur(sum(kQ.filter(v=>v.paiement==="cheque"),v=>v.paye))}</div><div class="s">${kQ.filter(v=>v.paiement==="cheque").length} chèque${kQ.filter(v=>v.paiement==="cheque").length>1?"s":""}</div>${rz("cheque")}</div>
   </div>
   ${keys.map(d=>{ const vs=days[d].slice().reverse(); return `<div class="panel" style="margin-bottom:16px">
     <div class="day-head"><div><h2>${jourL(d)}</h2><p class="muted">${vs.length} ticket${vs.length>1?"s":""} · ${eur(sum(vs,v=>v.paye))} encaissés</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" data-jpdf="${d}">Journal du jour (PDF)</button><button class="btn small danger" data-jdel="${d}">Effacer la journée</button></div></div>
@@ -784,7 +785,7 @@ R.facturation=function(){
   $("#fQ").oninput=e=>{ fQ=e.target.value; const pos=e.target.selectionStart; R.facturation(); const n=$("#fQ"); n.focus(); try{ n.setSelectionRange(pos,pos); }catch(_){} };
   V().querySelectorAll("[data-frz]").forEach(b=>b.onclick=()=>{ if(!canReset()) return;
     if(!b.classList.contains("armed")){ b.classList.add("danger","armed"); b.textContent="Confirmer"; return; }
-    S.raz.fact=S.raz.fact||{}; S.raz.fact[b.dataset.frz]=S.ventes.map(v=>v.id); save(); R.facturation(); toast({tickets:"Compteur de tickets remis à zéro",total:"Total encaissé remis à zéro",especes:"Espèces remises à zéro",carte:"Carte remise à zéro"}[b.dataset.frz]);
+    S.raz.fact=S.raz.fact||{}; S.raz.fact[b.dataset.frz]=S.ventes.map(v=>v.id); save(); R.facturation(); toast({tickets:"Compteur de tickets remis à zéro",total:"Total encaissé remis à zéro",especes:"Espèces remises à zéro",carte:"Carte remise à zéro",cheque:"Chèque remis à zéro"}[b.dataset.frz]);
   });
   V().querySelectorAll("[data-tk]").forEach(r=>r.onclick=()=>ticketModal(S.ventes.find(v=>v.id===r.dataset.tk)));
   const arm=(b,t)=>{ if(b.classList.contains("armed")) return true; b.classList.add("armed"); b.textContent=t; return false; };
@@ -833,7 +834,7 @@ function journalPdf(d,vs,btn){
     cols.forEach(([x,,r],i)=>doc.text(pdfT(row[i]),x,y,r?{align:"right"}:undefined)); y+=6; });
   const s=(f)=>vs.filter(f).reduce((a,v)=>a+v.paye,0);
   y+=2; doc.line(14,y,196,y); y+=6; doc.setFont("helvetica","bold"); doc.setFontSize(10);
-  [["Tickets",String(vs.length)],["Espèces",eur(s(v=>v.paiement==="especes"))],["Carte",eur(s(v=>v.paiement==="carte"))],["Mixte",eur(s(v=>v.paiement==="mixte"))],["Non précisé",eur(s(v=>!PAY[v.paiement]))],["Total encaissé",eur(s(()=>true))]].forEach(([k,val])=>{ doc.text(pdfT(k),140,y); doc.text(pdfT(val),196,y,{align:"right"}); y+=6; });
+  [["Tickets",String(vs.length)],["Espèces",eur(s(v=>v.paiement==="especes"))],["Carte",eur(s(v=>v.paiement==="carte"))],["Chèque",eur(s(v=>v.paiement==="cheque"))],["Mixte",eur(s(v=>v.paiement==="mixte"))],["Non précisé",eur(s(v=>!PAY[v.paiement]))],["Total encaissé",eur(s(()=>true))]].forEach(([k,val])=>{ doc.text(pdfT(k),140,y); doc.text(pdfT(val),196,y,{align:"right"}); y+=6; });
   return savePdf(doc,`Journal-caisse-${d}.pdf`,btn);
 }
 
