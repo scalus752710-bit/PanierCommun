@@ -566,7 +566,7 @@ R.foyers=function(){
   <div class="head"><div><h1>Gestion Bénéficiaires</h1><p>Composition et droits d'accès de chaque bénéficiaire.</p></div><button class="btn primary" id="addF">Nouveau Bénéficiaire</button></div>
   <div class="panel">
     <div class="toolbar"><input type="search" id="fq" placeholder="Rechercher un nom…" value="${esc(fQuery)}" aria-label="Rechercher">
-      <div class="seg" role="group" aria-label="Filtre">${[["tous","Tous"],["actifs","Accès actif"],["expires","Sans accès"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${fFilter===k}">${l}</button>`).join("")}</div></div>
+      </div>
     <div class="tbl-wrap"><table>
       <thead><tr><th>Bénéficiaire</th><th>Composition</th><th>Épicerie</th><th>Boutique</th><th class="r">Payé ce mois</th></tr></thead>
       <tbody>${list.map(f=>{const r=rav(f);return `<tr class="click" data-id="${f.id}">
@@ -577,7 +577,6 @@ R.foyers=function(){
     <p hidden class="muted" style="font-size:.8rem;margin:12px 0 0">Reste à vivre = (revenus − charges) ÷ personnes ÷ 30 jours. Barème : <span class="light bad"></span> moins de 7 € · <span class="light warn"></span> 7 à 12 € · <span class="light ok"></span> plus de 12 €.</p>
   </div>`;
   $("#fq").addEventListener("input",e=>{fQuery=e.target.value; const p=e.target.selectionStart; R.foyers(); const n=$("#fq"); n.focus(); n.setSelectionRange(p,p);});
-  V().querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{fFilter=b.dataset.f;R.foyers();});
   V().querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>foyerModal(tr.dataset.id));
   $("#addF").onclick=()=>foyerModal(null);
 };
