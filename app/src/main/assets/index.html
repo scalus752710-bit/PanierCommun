@@ -740,28 +740,35 @@ R.facturation=function(){
   const days={}; list.forEach(v=>(days[v.date]=days[v.date]||[]).push(v));
   const keys=Object.keys(days).sort().reverse();
   const sum=(a,f)=>a.reduce((s,v)=>s+f(v),0);
-  const tot=sum(list,v=>v.paye);
+  S.raz=S.raz||{}; const RZ=S.raz.fact||{};
+  const kl=k=>{ const ex=new Set(RZ[k]||[]); return list.filter(v=>!ex.has(v.id)); };
+  const kT=kl("tickets"), kM=kl("total"), kE=kl("especes"), kC=kl("carte");
+  const rz=k=>`<button class="btn small" data-frz="${k}" style="margin-top:10px">Remettre à zéro</button>`;
   V().innerHTML=`
   <div class="head"><div><h1>Facturation</h1><p>Tous les tickets de caisse, classés par jour.</p></div></div>
   <div class="panel fact-filters" style="margin-bottom:16px">
     <label>Mois<select id="fM">${mois.map(k=>`<option value="${k}" ${k===fMois?"selected":""}>${moisL(k)}</option>`).join("")}</select></label>
     <label>Paiement<select id="fP">${[["tous","Tous"],...Object.entries(PAY)].map(([k,l])=>`<option value="${k}" ${k===fPay?"selected":""}>${l}</option>`).join("")}</select></label>
-    <label style="flex:2 1 200px">Rechercher<input type="search" id="fQ" value="${esc(fQ)}" placeholder="N° de ticket, foyer ou caissier"></label>
+    <label style="flex:2 1 200px">Rechercher<input type="search" id="fQ" value="${esc(fQ)}" placeholder="N° de ticket, bénéficiaire ou caissier"></label>
   </div>
   <div class="grid g4" style="margin-bottom:16px">
-    <div class="panel kpi"><div class="eyebrow">Tickets</div><div class="v num">${list.length}</div><div class="s">${keys.length} jour${keys.length>1?"s":""} d'ouverture</div></div>
-    <div class="panel kpi"><div class="eyebrow">Total encaissé</div><div class="v num">${eur(tot)}</div><div class="s">Valeur distribuée : ${eur(sum(list,v=>v.valeur))}</div></div>
-    <div class="panel kpi"><div class="eyebrow">Espèces</div><div class="v num">${eur(sum(list.filter(v=>v.paiement==="especes"),v=>v.paye))}</div><div class="s">Mixte : ${eur(sum(list.filter(v=>v.paiement==="mixte"),v=>v.paye))}</div></div>
-    <div class="panel kpi"><div class="eyebrow">Carte</div><div class="v num">${eur(sum(list.filter(v=>v.paiement==="carte"),v=>v.paye))}</div><div class="s">Non précisé : ${eur(sum(list.filter(v=>!PAY[v.paiement]),v=>v.paye))}</div></div>
+    <div class="panel kpi"><div class="eyebrow">Tickets</div><div class="v num">${kT.length}</div><div class="s">${new Set(kT.map(v=>v.date)).size} jour${new Set(kT.map(v=>v.date)).size>1?"s":""} d'ouverture</div>${rz("tickets")}</div>
+    <div class="panel kpi"><div class="eyebrow">Total encaissé</div><div class="v num">${eur(sum(kM,v=>v.paye))}</div><div class="s">Valeur distribuée : ${eur(sum(kM,v=>v.valeur))}</div>${rz("total")}</div>
+    <div class="panel kpi"><div class="eyebrow">Espèces</div><div class="v num">${eur(sum(kE.filter(v=>v.paiement==="especes"),v=>v.paye))}</div><div class="s">Mixte : ${eur(sum(kE.filter(v=>v.paiement==="mixte"),v=>v.paye))}</div>${rz("especes")}</div>
+    <div class="panel kpi"><div class="eyebrow">Carte</div><div class="v num">${eur(sum(kC.filter(v=>v.paiement==="carte"),v=>v.paye))}</div><div class="s">Non précisé : ${eur(sum(kC.filter(v=>!PAY[v.paiement]),v=>v.paye))}</div>${rz("carte")}</div>
   </div>
   ${keys.map(d=>{ const vs=days[d].slice().reverse(); return `<div class="panel" style="margin-bottom:16px">
     <div class="day-head"><div><h2>${jourL(d)}</h2><p class="muted">${vs.length} ticket${vs.length>1?"s":""} · ${eur(sum(vs,v=>v.paye))} encaissés</p></div><button class="btn small" data-jpdf="${d}">Journal du jour (PDF)</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>N° de ticket</th><th>Heure</th><th>Foyer</th><th>Caissier</th><th>Paiement</th><th class="r">Articles</th><th class="r">Montant</th></tr></thead><tbody>
+    <div class="tbl-wrap"><table><thead><tr><th>N° de ticket</th><th>Heure</th><th>Bénéficiaire</th><th>Caissier</th><th>Paiement</th><th class="r">Articles</th><th class="r">Montant</th></tr></thead><tbody>
     ${vs.map(v=>`<tr class="click" data-tk="${v.id}" title="Voir le ticket"><td class="num" style="white-space:nowrap"><b>${ticketNo(v)}</b></td><td class="num">${esc(v.heure||"—")}</td><td>${esc(nomF(v.foyer))}</td><td>${esc(v.caisse||"—")}</td><td>${payL(v)}</td><td class="r num">${nbArt(v)}</td><td class="r num"><b>${eur(v.paye)}</b></td></tr>`).join("")}
     </tbody></table></div></div>`; }).join("")||`<div class="panel"><p class="muted" style="margin:0">Aucun ticket pour ce mois${q||fPay!=="tous"?" avec ces filtres":""}.</p></div>`}`;
   $("#fM").onchange=e=>{ fMois=e.target.value; R.facturation(); };
   $("#fP").onchange=e=>{ fPay=e.target.value; R.facturation(); };
   $("#fQ").oninput=e=>{ fQ=e.target.value; const pos=e.target.selectionStart; R.facturation(); const n=$("#fQ"); n.focus(); try{ n.setSelectionRange(pos,pos); }catch(_){} };
+  V().querySelectorAll("[data-frz]").forEach(b=>b.onclick=()=>{
+    if(!b.classList.contains("armed")){ b.classList.add("danger","armed"); b.textContent="Confirmer"; return; }
+    S.raz.fact=S.raz.fact||{}; S.raz.fact[b.dataset.frz]=S.ventes.map(v=>v.id); save(); R.facturation(); toast({tickets:"Compteur de tickets remis à zéro",total:"Total encaissé remis à zéro",especes:"Espèces remises à zéro",carte:"Carte remise à zéro"}[b.dataset.frz]);
+  });
   V().querySelectorAll("[data-tk]").forEach(r=>r.onclick=()=>ticketModal(S.ventes.find(v=>v.id===r.dataset.tk)));
   V().querySelectorAll("[data-jpdf]").forEach(b=>b.onclick=()=>journalPdf(b.dataset.jpdf,days[b.dataset.jpdf].slice(),b));
 };
@@ -769,9 +776,9 @@ function ticketModal(v){
   if(!v) return;
   const m=modal("Ticket "+ticketNo(v),`<div class="receipt-tk">
     <p class="tk-h"><b>Panier Commun</b>${ASSO()?`<br>${esc(ASSO())}`:""}</p>
-    <dl class="tk-meta"><dt>Ticket</dt><dd class="num">${ticketNo(v)}</dd><dt>Date</dt><dd>${fmtD(v.date)}${v.heure?" à "+esc(v.heure):""}</dd><dt>Foyer</dt><dd>${esc(nomF(v.foyer))}</dd><dt>Servi par</dt><dd>${esc(v.caisse||"—")}</dd><dt>Paiement</dt><dd>${payL(v)}</dd></dl>
+    <dl class="tk-meta"><dt>Ticket</dt><dd class="num">${ticketNo(v)}</dd><dt>Date</dt><dd>${fmtD(v.date)}${v.heure?" à "+esc(v.heure):""}</dd><dt>Bénéficiaire</dt><dd>${esc(nomF(v.foyer))}</dd><dt>Servi par</dt><dd>${esc(v.caisse||"—")}</dd><dt>Paiement</dt><dd>${payL(v)}</dd></dl>
     <table class="tk-lines"><tbody>${v.lignes.map(l=>`<tr><td>${esc(l.nom)}<br><span class="muted num">${l.q} × ${eur(l.sol)}</span></td><td class="r num">${eur(l.q*l.sol)}</td></tr>`).join("")}</tbody></table>
-    <dl class="tk-tot"><dt>Total payé</dt><dd class="num"><b>${eur(v.paye)}</b></dd><dt>Valeur en magasin</dt><dd class="num">${eur(v.valeur)}</dd><dt>Économie du foyer</dt><dd class="num">${eur(v.valeur-v.paye)}</dd></dl>
+    <dl class="tk-tot"><dt>Total payé</dt><dd class="num"><b>${eur(v.paye)}</b></dd><dt>Valeur en magasin</dt><dd class="num">${eur(v.valeur)}</dd><dt>Économie du bénéficiaire</dt><dd class="num">${eur(v.valeur-v.paye)}</dd></dl>
   </div>`,`<button class="btn" data-close>Fermer</button><button class="btn primary" id="tkPdf">Ticket (PDF)</button>`);
   m.querySelector("#tkPdf").onclick=e=>ticketPdf(v,e.currentTarget);
 }
@@ -783,18 +790,18 @@ function ticketPdf(v,btn){
   c("Panier Commun",13,true); y+=5; if(ASSO()){ c(ASSO(),8); y+=5; }
   doc.setLineDashPattern([1,1],0); doc.line(5,y,75,y); y+=5;
   const kv=(k,val,b)=>{ doc.setFont("helvetica",b?"bold":"normal"); doc.setFontSize(b?10:8.5); doc.text(pdfT(k),5,y); doc.text(pdfT(val),75,y,{align:"right"}); y+=b?5.5:4.5; };
-  kv("Ticket",ticketNo(v)); kv("Date",fmtD(v.date)+(v.heure?" à "+v.heure:"")); kv("Foyer",nomF(v.foyer)); kv("Servi par",v.caisse||"—"); kv("Paiement",payL(v));
+  kv("Ticket",ticketNo(v)); kv("Date",fmtD(v.date)+(v.heure?" à "+v.heure:"")); kv("Bénéficiaire",nomF(v.foyer)); kv("Servi par",v.caisse||"—"); kv("Paiement",payL(v));
   doc.line(5,y-1,75,y-1); y+=4;
   v.lignes.forEach(l=>{ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(pdfT(l.nom),52)[0],5,y); doc.text(pdfT(eur(l.q*l.sol)),75,y,{align:"right"}); y+=3.8; doc.setFontSize(7.5); doc.setTextColor(110); doc.text(pdfT(`${l.q} × ${eur(l.sol)}`),5,y); doc.setTextColor(0); y+=5.2; });
   doc.line(5,y-1,75,y-1); y+=4;
-  kv("Total payé",eur(v.paye),true); kv("Valeur en magasin",eur(v.valeur)); kv("Économie du foyer",eur(v.valeur-v.paye));
+  kv("Total payé",eur(v.paye),true); kv("Valeur en magasin",eur(v.valeur)); kv("Économie du bénéficiaire",eur(v.valeur-v.paye));
   y+=3; c("Merci et à bientôt !",8);
   return savePdf(doc,`Ticket-${ticketNo(v)}.pdf`,btn);
 }
 function journalPdf(d,vs,btn){
   if(!window.jspdf){ toast("Le module PDF n'a pas pu se charger. Vérifiez internet et rechargez la page."); return; }
   const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"mm",format:"a4"});
-  const cols=[[14,"N° de ticket"],[46,"Heure"],[60,"Foyer"],[105,"Caissier"],[138,"Paiement"],[170,"Art.",1],[196,"Montant",1]];
+  const cols=[[14,"N° de ticket"],[46,"Heure"],[60,"Bénéficiaire"],[105,"Caissier"],[138,"Paiement"],[170,"Art.",1],[196,"Montant",1]];
   let y=18; const head=()=>{ doc.setFont("helvetica","bold"); doc.setFontSize(9); cols.forEach(([x,t,r])=>doc.text(t,x,y,r?{align:"right"}:undefined)); y+=2; doc.line(14,y,196,y); y+=5; };
   doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text(pdfT("Journal de caisse — "+jourL(d)),14,y); y+=6;
   doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text(pdfT("Panier Commun"+(ASSO()?" · "+ASSO():"")),14,y); doc.setTextColor(0); y+=9; head();
