@@ -59,6 +59,7 @@ nav a:hover{background:var(--sunk)}
 nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
 nav a .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.35}
 nav a[aria-current="page"] .dot{opacity:1}
+.sync-dot{width:9px;height:9px;border-radius:50%;background:var(--muted);display:inline-block}.sync-dot[data-s="ok"]{background:var(--accent)}.sync-dot[data-s="wait"]{background:#c58a12}.sync-dot[data-s="err"]{background:#b3261e}
 .side .who{margin-top:auto;font-size:.82rem;color:var(--muted);padding:10px;border-top:1px solid var(--line)}
 .side .who select{width:100%;margin-top:4px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
 
@@ -237,6 +238,7 @@ svg.ean{display:block;height:auto;border-radius:3px}
 </div>
 <div id="modal-root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 
 <script>
 (function(){
@@ -400,7 +402,7 @@ const nextRef=()=>{ const n=Math.max(0,...S.produits.map(p=>parseInt(String(p.re
   S.produits.forEach(p=>{ if(!p.ref) p.ref=nextRef(); if(p.marque==null) p.marque=MQ[p.id]||""; if(!p.ean) p.ean=genEan(); if(p.achat==null) p.achat=/^p\d+$/.test(p.id)?Math.round(p.off*0.7*100)/100:""; }); }
 if(!S.commission) S.commission={date:addDays((4-TODAY.getDay()+7)%7||7),heure:"09:30",lieu:"Salle de réunion, 1er étage"};
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
-const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} };
+const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} syncQueue(); };
 
 /* ---------- Calculs métier ---------- */
 const nbPers = f => f.adultes + f.enfants.length;
@@ -425,7 +427,7 @@ function modal(title, body, foot){
   root.querySelector(".overlay").addEventListener("click",e=>{ if(e.target.classList.contains("overlay")||e.target.closest("[data-close]")) closeModal(); });
   return root.querySelector(".modal");
 }
-const closeModal=()=>{ stopScan(); $("#modal-root").innerHTML=""; };
+const closeModal=()=>{ stopScan(); $("#modal-root").innerHTML=""; if(window.__syncAfterModal) window.__syncAfterModal(); };
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
 /* ---------- Navigation ---------- */
@@ -499,7 +501,7 @@ R.tableau=function(){
   const comm=S.dossiers.filter(d=>d.etape==="Commission");
   V().innerHTML=`
   <div class="head"><div><div class="eyebrow">${TODAY.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>Tableau de bord</h1><p>Ce qui demande votre attention aujourd'hui.</p></div><span class="sample">Données d'exemple</span></div>
-  ${window.Android?"":`<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px">Application Android</h2><p class="muted" style="margin:0;font-size:.85rem">Installez Panier Commun sur un téléphone Android. Les données de chaque appareil restent séparées.</p></div><a class="btn primary" href="${APK_URL}" download style="text-decoration:none">Télécharger l'APK</a></div>`}
+  ${syncPanel()}${window.Android?"":`<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px">Application Android</h2><p class="muted" style="margin:0;font-size:.85rem">Installez Panier Commun sur un téléphone Android, puis connectez-vous avec votre compte pour retrouver les mêmes données.</p></div><a class="btn primary" href="${APK_URL}" download style="text-decoration:none">Télécharger l'APK</a></div>`}
   <div class="grid g4" style="margin-bottom:16px">
     <div class="panel kpi"><div class="eyebrow">Foyers actifs</div><div class="v num">${actifs}</div><div class="s">${S.foyers.reduce((a,f)=>a+nbPers(f),0)} personnes suivies</div></div>
     <div class="panel kpi"><div class="eyebrow">Passages du jour</div><div class="v num">${vj.length}</div><div class="s">${eur(vj.reduce((a,v)=>a+v.paye,0))} encaissés</div><button class="btn small" data-raz="jour" style="margin-top:10px">Remettre à zéro</button></div>
@@ -510,6 +512,7 @@ R.tableau=function(){
     <div class="panel"><div class="head" style="margin-bottom:8px"><h2>Passages en caisse de janvier à décembre</h2>${yearSel("yD")}<button class="btn small" data-raz="graph">Remettre à zéro</button></div>${barChart(m.map(x=>x.l),pass,null,{label:"Passages par mois"})}<p class="muted" style="font-size:.82rem;margin:6px 0 0">Le mois en cours est partiel.</p></div>
   </div>`;
   bindYear("yD",R.tableau);
+  bindSyncPanel();
   V().querySelectorAll("[data-raz]").forEach(b=>b.onclick=()=>{
     if(!b.classList.contains("armed")){ b.classList.add("btn","danger","armed"); b.textContent="Confirmer"; return; }
     if(b.dataset.raz==="jour") S.raz.jour={date:today,ids:S.ventes.filter(v=>v.date===today).map(v=>v.id)};
@@ -1049,7 +1052,100 @@ R.rapports=function(){
   };
 };
 
+/* ---------- Synchronisation entre appareils (Supabase) ---------- */
+// Laisser vide pour fonctionner sans synchronisation (données sur l'appareil seulement).
+const SB_URL="https://gglgtoyuauddzfmgflpo.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbGd0b3l1YXVkZHpmbWdmbHBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5OTc0NDUsImV4cCI6MjEwOTU3MzQ0NX0.rWPPfVhkoFSY2PqJ6fsnZwH398nrwbfUvfNAdXGC7bo";
+const SB_TABLE="donnees";
+var SYNC={on:false,db:null,user:null,state:"local",sent:{},timer:null,busy:false,again:false,refresh:false};
+const SYNC_KEY=KEY+"-sync";
+const hashOf=s=>{ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return (4294967296*(2097151&h2)+(h1>>>0)).toString(36); };
+const hashKey=k=>hashOf(JSON.stringify(S[k]===undefined?null:S[k]));
+try{ SYNC.sent=JSON.parse(localStorage.getItem(SYNC_KEY))||{}; }catch(e){ SYNC.sent={}; }
+const saveSent=()=>{ try{ localStorage.setItem(SYNC_KEY,JSON.stringify(SYNC.sent)); }catch(e){} };
+const syncLabel=()=>({local:"",off:"Non connecté : les données restent sur cet appareil.",wait:"Synchronisation en cours…",ok:"Données partagées entre tous les appareils connectés.",err:"Hors connexion : les modifications seront envoyées dès le retour d'internet."})[SYNC.state];
+function setSyncState(s){ SYNC.state=s; const el=$("#syncTxt"); if(el) el.textContent=syncLabel(); const d=$("#syncDot"); if(d) d.dataset.s=s; }
+function syncPanel(){
+  if(!SB_URL||SB_URL.startsWith("__")) return "";
+  const who=SYNC.user?`Connecté : <b>${esc(SYNC.user.email)}</b>`:"";
+  return `<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px;display:flex;align-items:center;gap:8px"><span id="syncDot" class="sync-dot" data-s="${SYNC.state}"></span>Synchronisation</h2><p class="muted" style="margin:0;font-size:.85rem"><span id="syncTxt">${syncLabel()}</span>${who?`<br>${who}`:""}</p></div>${SYNC.user?`<button class="btn" id="syncOut">Se déconnecter</button>`:`<button class="btn primary" id="syncIn">Se connecter</button>`}</div>`;
+}
+function bindSyncPanel(){ const i=$("#syncIn"), o=$("#syncOut"); if(i) i.onclick=loginModal; if(o) o.onclick=async()=>{ if(!o.classList.contains("armed")){ o.classList.add("danger","armed"); o.textContent="Confirmer"; return; } await SYNC.db.auth.signOut(); }; }
+// Réaffiche l'écran courant sans gêner une saisie en cours
+function syncRefresh(){
+  if($("#modal-root .overlay")){ SYNC.refresh=true; return; }
+  const a=document.activeElement; if(a&&a.closest&&a.closest("#view")&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){ SYNC.refresh=true; setTimeout(()=>{ if(SYNC.refresh) syncRefresh(); },1500); return; }
+  SYNC.refresh=false; const y=window.scrollY; const h=(location.hash||"").slice(1); const cur=VIEWS.some(v=>v[0]===h)?h:"tableau"; renderNav(cur); R[cur](); renderLogo(); window.scrollTo(0,y);
+}
+window.__syncAfterModal=()=>{ if(SYNC.refresh) setTimeout(syncRefresh,0); };
+function applyRow(row){
+  const k=row.cle; if(!k) return false;
+  const local=hashKey(k);
+  if(SYNC.sent[k]!==undefined&&local!==SYNC.sent[k]) return false; // modification locale pas encore envoyée : elle gagne
+  const h=hashOf(JSON.stringify(row.valeur===undefined?null:row.valeur));
+  if(h===local){ SYNC.sent[k]=h; return false; }
+  S[k]=row.valeur; SYNC.sent[k]=h; return true;
+}
+function syncQueue(){ if(!SYNC.on||!SYNC.user) return; clearTimeout(SYNC.timer); SYNC.timer=setTimeout(syncPush,500); }
+async function syncPush(){
+  if(!SYNC.on||!SYNC.user) return;
+  if(SYNC.busy){ SYNC.again=true; return; }
+  const keys=Object.keys(S).filter(k=>hashKey(k)!==SYNC.sent[k]); if(!keys.length){ if(SYNC.state!=="ok") setSyncState("ok"); return; }
+  SYNC.busy=true; setSyncState("wait");
+  const now=new Date().toISOString(); const hs={}; const rows=keys.map(k=>{ hs[k]=hashKey(k); return {cle:k,valeur:S[k]===undefined?null:S[k],maj:now}; });
+  try{ const {error}=await SYNC.db.from(SB_TABLE).upsert(rows); if(error) throw error; keys.forEach(k=>SYNC.sent[k]=hs[k]); saveSent(); setSyncState("ok"); }
+  catch(e){ setSyncState("err"); clearTimeout(SYNC.timer); SYNC.timer=setTimeout(syncPush,15000); }
+  finally{ SYNC.busy=false; if(SYNC.again){ SYNC.again=false; syncQueue(); } }
+}
+async function syncPull(first){
+  setSyncState("wait");
+  const {data,error}=await SYNC.db.from(SB_TABLE).select("cle,valeur"); if(error) throw error;
+  const fresh=!Object.keys(SYNC.sent).length; let changed=false;
+  if(data.length&&fresh){ // premier passage sur cet appareil : on reprend les données partagées
+    data.forEach(r=>{ S[r.cle]=r.valeur; SYNC.sent[r.cle]=hashOf(JSON.stringify(r.valeur===undefined?null:r.valeur)); }); changed=true;
+    if(first) toast("Données partagées récupérées");
+  } else data.forEach(r=>{ if(applyRow(r)) changed=true; });
+  if(changed){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} syncRefresh(); }
+  saveSent(); await syncPush(); if(SYNC.state==="wait") setSyncState("ok");
+}
+let syncChan=null;
+async function syncStart(){
+  try{ await syncPull(true); }catch(e){ setSyncState("err"); }
+  if(syncChan) SYNC.db.removeChannel(syncChan);
+  syncChan=SYNC.db.channel("donnees-maj").on("postgres_changes",{event:"*",schema:"public",table:SB_TABLE},p=>{
+    if(p.new&&applyRow(p.new)){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} saveSent(); syncRefresh(); }
+  }).subscribe();
+}
+function loginModal(){
+  const m=modal("Se connecter",`<p class="muted" style="margin:0 0 12px;font-size:.9rem">Connectez-vous pour partager les données entre le téléphone et l'ordinateur. Les comptes sont créés par la coordinatrice.</p>
+    <div class="form"><label>Adresse e-mail<input type="email" id="lgE" autocomplete="username"></label><label>Mot de passe<input type="password" id="lgP" autocomplete="current-password"></label></div><p id="lgErr" style="color:var(--bad,#b3261e);font-size:.85rem;margin:8px 0 0" hidden></p>`,
+    `<button class="btn" data-close>Plus tard</button><button class="btn primary" id="lgGo">Se connecter</button>`);
+  const go=async()=>{ const b=$("#lgGo"), er=$("#lgErr"); b.disabled=true; b.textContent="Connexion…"; er.hidden=true;
+    try{ const {error}=await SYNC.db.auth.signInWithPassword({email:$("#lgE").value.trim(),password:$("#lgP").value}); if(error) throw error; closeModal(); toast("Connecté"); }
+    catch(e){ er.textContent=/invalid/i.test(e&&e.message||"")?"Adresse e-mail ou mot de passe incorrect.":"Connexion impossible. Vérifiez internet et réessayez."; er.hidden=false; b.disabled=false; b.textContent="Se connecter"; } };
+  m.querySelector("#lgGo").onclick=go; m.querySelector("#lgP").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+  setTimeout(()=>{ const e=$("#lgE"); if(e) e.focus(); },50);
+}
+function syncInit(){
+  if(!SB_URL||SB_URL.startsWith("__")) return;
+  if(!window.supabase||!window.supabase.createClient){ setSyncState("err"); return; }
+  SYNC.on=true; SYNC.state="off";
+  SYNC.db=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:KEY+"-auth"}});
+  let started=false;
+  SYNC.db.auth.onAuthStateChange((ev,session)=>{
+    const u=session&&session.user||null; const was=SYNC.user; SYNC.user=u;
+    if(u&&!started){ started=true; setTimeout(syncStart,0); }
+    if(!u){ started=false; if(syncChan){ SYNC.db.removeChannel(syncChan); syncChan=null; } setSyncState("off"); }
+    if(!!was!==!!u) syncRefresh();
+  });
+  SYNC.db.auth.getSession().then(({data})=>{ if(!data||!data.session) setTimeout(()=>{ if(!SYNC.user&&!$("#modal-root .overlay")) loginModal(); },300); });
+  const again=()=>{ if(SYNC.user) syncPull(false).catch(()=>setSyncState("err")); };
+  window.addEventListener("online",again);
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") again(); });
+}
+
 $("#logoSlot").onclick=logoModal; renderLogo();
+syncInit();
 route();
 })();
 </script>
