@@ -85,6 +85,7 @@ nav a[aria-current="page"] .dot{opacity:1}
 .themebtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:700;font-size:.85rem;white-space:nowrap;flex-shrink:0;cursor:pointer}
 body.logos-locked .logo2.empty{display:none!important}body.logos-locked .logo2,body.logos-locked .logo-slot{cursor:default;border-color:transparent!important}body.logos-locked .logo-edit{display:none}
 .casoc{color:var(--casoc);font-weight:700;letter-spacing:.02em}
+body.no-raz [data-raz],body.no-raz [data-frz],body.no-raz [data-rraz]{display:none!important}
 .lockbtn::before{content:"🔒 "}.lockbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:700;font-size:.85rem;white-space:nowrap;flex-shrink:0}
 .acc-tbl th.c,.acc-tbl td.c{text-align:center}.acc-tbl input{width:18px;height:18px}
 .side .who{margin-top:auto;font-size:.82rem;color:var(--muted);padding:10px;border-top:1px solid var(--line)}
@@ -549,7 +550,7 @@ R.tableau=function(){
   </div>`;
   bindYear("yD",R.tableau);
   bindSyncPanel();
-  V().querySelectorAll("[data-raz]").forEach(b=>b.onclick=()=>{
+  V().querySelectorAll("[data-raz]").forEach(b=>b.onclick=()=>{ if(!canReset()) return;
     if(!b.classList.contains("armed")){ b.classList.add("btn","danger","armed"); b.textContent="Confirmer"; return; }
     if(b.dataset.raz==="jour") S.raz.jour={date:today,ids:S.ventes.filter(v=>v.date===today).map(v=>v.id)};
     else if(b.dataset.raz==="graph") S.raz.graph=S.ventes.map(v=>v.id);
@@ -782,7 +783,7 @@ R.facturation=function(){
   $("#fM").onchange=e=>{ fMois=e.target.value; R.facturation(); };
   $("#fP").onchange=e=>{ fPay=e.target.value; R.facturation(); };
   $("#fQ").oninput=e=>{ fQ=e.target.value; const pos=e.target.selectionStart; R.facturation(); const n=$("#fQ"); n.focus(); try{ n.setSelectionRange(pos,pos); }catch(_){} };
-  V().querySelectorAll("[data-frz]").forEach(b=>b.onclick=()=>{
+  V().querySelectorAll("[data-frz]").forEach(b=>b.onclick=()=>{ if(!canReset()) return;
     if(!b.classList.contains("armed")){ b.classList.add("danger","armed"); b.textContent="Confirmer"; return; }
     S.raz.fact=S.raz.fact||{}; S.raz.fact[b.dataset.frz]=S.ventes.map(v=>v.id); save(); R.facturation(); toast({tickets:"Compteur de tickets remis à zéro",total:"Total encaissé remis à zéro",especes:"Espèces remises à zéro",carte:"Carte remise à zéro"}[b.dataset.frz]);
   });
@@ -1240,7 +1241,7 @@ R.rapports=function(){
   </div>`;
   const NOMS={passages:"Passages",foyers:"Bénéficiaires servis",valeur:"Valeur distribuée",panier:"Panier moyen",cats:"Répartition par catégorie",evo:"Évolution mensuelle"};
   bindYear("yR",R.rapports);
-  V().querySelectorAll("[data-rraz]").forEach(b=>b.onclick=()=>{
+  V().querySelectorAll("[data-rraz]").forEach(b=>b.onclick=()=>{ if(!canReset()) return;
     if(!b.classList.contains("armed")){ b.classList.add("danger","armed"); b.textContent="Confirmer"; return; }
     S.raz.rap[b.dataset.rraz]=S.ventes.map(v=>v.id); save(); R.rapports(); toast(["cats","valeur","evo"].includes(b.dataset.rraz)?`${NOMS[b.dataset.rraz]} remise à zéro`:`${NOMS[b.dataset.rraz]} remis à zéro`);
   });
@@ -1360,10 +1361,12 @@ let WHO=null; try{ const w=JSON.parse(localStorage.getItem(WHO_KEY)); if(w&&Date
 const me=()=>S.equipe.find(e=>e.id===WHO)||null;
 const canSee=k=>!lockOn()||(me()&&accesRole(me().role).includes(k));
 const canAdmin=()=>!lockOn()||isAdmin(me());
+const SANS_RAZ=["Animatrice","Facturation"]; // rôles sans boutons « Remettre à zéro »
+const canReset=()=>!lockOn()||(!!me()&&!SANS_RAZ.includes(rk(me().role)));
 const whoName=()=>{ const m=me(); return m?m.nom:"—"; };
 const touchWho=()=>{ if(WHO) try{ localStorage.setItem(WHO_KEY,JSON.stringify({id:WHO,t:Date.now()})); }catch(e){} };
 function renderWho(){
-  const lk=!canAdmin(); document.body.classList.toggle("logos-locked",lk); ["#logoSlot","#logo2Slot","#logo3Slot"].forEach(id=>{ const e=$(id); if(e) e.title=lk?"":"Ajouter ou changer ce logo"; });
+  const lk=!canAdmin(); document.body.classList.toggle("logos-locked",lk); document.body.classList.toggle("no-raz",!canReset()); ["#logoSlot","#logo2Slot","#logo3Slot"].forEach(id=>{ const e=$(id); if(e) e.title=lk?"":"Ajouter ou changer ce logo"; });
   const b=$("#whoBox"), l=$("#lockBtn"); if(!b) return;
   const m=me(); const on=lockOn();
   b.innerHTML=on&&m?`Connecté : <b style="color:var(--ink)">${esc(m.nom)}</b><br>${esc(m.role)}`:on?"":`<span>Accès libre : définissez un code PIN pour l'Administratrice ou la Coordinatrice dans <a href="#equipe">Équipe</a> pour activer le verrouillage.</span>`;
