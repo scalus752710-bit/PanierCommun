@@ -4,21 +4,35 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      # Le SDK Android est déjà présent sur les machines GitHub.
       - name: Compiler l'APK
         run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk PanierCommun.apk
       - uses: actions/upload-artifact@v4
         with:
           name: PanierCommun-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: PanierCommun.apk
+      - name: Publier l'APK (onglet Releases)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" PanierCommun.apk \
+            --title "Panier Commun — compilation ${{ github.run_number }}" \
+            --notes "APK compilé automatiquement depuis ${{ github.sha }}."
