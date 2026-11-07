@@ -736,16 +736,18 @@ R.facturation=function(){
   const mois=[...new Set([thisMonth,...S.ventes.map(v=>monthKey(v.date))])].sort().reverse();
   if(!fMois||!mois.includes(fMois)) fMois=mois[0];
   const q=fQ.trim().toLowerCase();
-  const list=S.ventes.filter(v=>monthKey(v.date)===fMois&&(fPay==="tous"||(v.paiement||"")===fPay)&&(!q||(ticketNo(v)+" "+nomF(v.foyer)+" "+(v.caisse||"")).toLowerCase().includes(q)));
+  S.raz=S.raz||{}; const HID=new Set(S.raz.factHide||[]);
+  const hidM=S.ventes.filter(v=>monthKey(v.date)===fMois&&HID.has(v.id));
+  const list=S.ventes.filter(v=>monthKey(v.date)===fMois&&!HID.has(v.id)&&(fPay==="tous"||(v.paiement||"")===fPay)&&(!q||(ticketNo(v)+" "+nomF(v.foyer)+" "+(v.caisse||"")).toLowerCase().includes(q)));
   const days={}; list.forEach(v=>(days[v.date]=days[v.date]||[]).push(v));
   const keys=Object.keys(days).sort().reverse();
   const sum=(a,f)=>a.reduce((s,v)=>s+f(v),0);
-  S.raz=S.raz||{}; const RZ=S.raz.fact||{};
+  const RZ=S.raz.fact||{};
   const kl=k=>{ const ex=new Set(RZ[k]||[]); return list.filter(v=>!ex.has(v.id)); };
   const kT=kl("tickets"), kM=kl("total"), kE=kl("especes"), kC=kl("carte");
   const rz=k=>`<button class="btn small" data-frz="${k}" style="margin-top:10px">Remettre à zéro</button>`;
   V().innerHTML=`
-  <div class="head"><div><h1>Facturation</h1><p>Tous les tickets de caisse, classés par jour.</p></div></div>
+  <div class="head"><div><h1>Facturation</h1><p>Tous les tickets de caisse, classés par jour.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${hidM.length?`<button class="btn small" id="fRest">Rétablir les journées effacées (${new Set(hidM.map(v=>v.date)).size})</button>`:""}${keys.length?`<button class="btn small danger" id="fDelAll">Effacer toutes les journées du mois</button>`:""}</div></div>
   <div class="panel fact-filters" style="margin-bottom:16px">
     <label>Mois<select id="fM">${mois.map(k=>`<option value="${k}" ${k===fMois?"selected":""}>${moisL(k)}</option>`).join("")}</select></label>
     <label>Paiement<select id="fP">${[["tous","Tous"],...Object.entries(PAY)].map(([k,l])=>`<option value="${k}" ${k===fPay?"selected":""}>${l}</option>`).join("")}</select></label>
@@ -758,7 +760,7 @@ R.facturation=function(){
     <div class="panel kpi"><div class="eyebrow">Carte</div><div class="v num">${eur(sum(kC.filter(v=>v.paiement==="carte"),v=>v.paye))}</div><div class="s">Non précisé : ${eur(sum(kC.filter(v=>!PAY[v.paiement]),v=>v.paye))}</div>${rz("carte")}</div>
   </div>
   ${keys.map(d=>{ const vs=days[d].slice().reverse(); return `<div class="panel" style="margin-bottom:16px">
-    <div class="day-head"><div><h2>${jourL(d)}</h2><p class="muted">${vs.length} ticket${vs.length>1?"s":""} · ${eur(sum(vs,v=>v.paye))} encaissés</p></div><button class="btn small" data-jpdf="${d}">Journal du jour (PDF)</button></div>
+    <div class="day-head"><div><h2>${jourL(d)}</h2><p class="muted">${vs.length} ticket${vs.length>1?"s":""} · ${eur(sum(vs,v=>v.paye))} encaissés</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" data-jpdf="${d}">Journal du jour (PDF)</button><button class="btn small danger" data-jdel="${d}">Effacer la journée</button></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>N° de ticket</th><th>Heure</th><th>Bénéficiaire</th><th>Caissier</th><th>Paiement</th><th class="r">Articles</th><th class="r">Montant</th></tr></thead><tbody>
     ${vs.map(v=>`<tr class="click" data-tk="${v.id}" title="Voir le ticket"><td class="num" style="white-space:nowrap"><b>${ticketNo(v)}</b></td><td class="num">${esc(v.heure||"—")}</td><td>${esc(nomF(v.foyer))}</td><td>${esc(v.caisse||"—")}</td><td>${payL(v)}</td><td class="r num">${nbArt(v)}</td><td class="r num"><b>${eur(v.paye)}</b></td></tr>`).join("")}
     </tbody></table></div></div>`; }).join("")||`<div class="panel"><p class="muted" style="margin:0">Aucun ticket pour ce mois${q||fPay!=="tous"?" avec ces filtres":""}.</p></div>`}`;
@@ -770,6 +772,11 @@ R.facturation=function(){
     S.raz.fact=S.raz.fact||{}; S.raz.fact[b.dataset.frz]=S.ventes.map(v=>v.id); save(); R.facturation(); toast({tickets:"Compteur de tickets remis à zéro",total:"Total encaissé remis à zéro",especes:"Espèces remises à zéro",carte:"Carte remise à zéro"}[b.dataset.frz]);
   });
   V().querySelectorAll("[data-tk]").forEach(r=>r.onclick=()=>ticketModal(S.ventes.find(v=>v.id===r.dataset.tk)));
+  const arm=(b,t)=>{ if(b.classList.contains("armed")) return true; b.classList.add("armed"); b.textContent=t; return false; };
+  const hide=ids=>{ S.raz.factHide=[...new Set([...(S.raz.factHide||[]),...ids])]; save(); R.facturation(); };
+  V().querySelectorAll("[data-jdel]").forEach(b=>b.onclick=()=>{ if(!arm(b,"Confirmer l'effacement")) return; hide(days[b.dataset.jdel].map(v=>v.id)); toast("Journée du "+fmtD(b.dataset.jdel)+" effacée"); });
+  const da=$("#fDelAll"); if(da) da.onclick=()=>{ if(!arm(da,`Confirmer : effacer ${keys.length} journée${keys.length>1?"s":""}`)) return; hide(S.ventes.filter(v=>monthKey(v.date)===fMois).map(v=>v.id)); toast("Journées du mois effacées"); };
+  const fr=$("#fRest"); if(fr) fr.onclick=()=>{ const ids=new Set(hidM.map(v=>v.id)); S.raz.factHide=(S.raz.factHide||[]).filter(i=>!ids.has(i)); save(); R.facturation(); toast("Journées rétablies"); };
   V().querySelectorAll("[data-jpdf]").forEach(b=>b.onclick=()=>journalPdf(b.dataset.jpdf,days[b.dataset.jpdf].slice(),b));
 };
 function ticketModal(v){
