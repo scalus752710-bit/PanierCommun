@@ -8,12 +8,15 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.view.View;
+import android.view.Window;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -199,6 +202,22 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        /** Couleurs des barres système selon le thème de la page (clair ou sombre). */
+        @JavascriptInterface
+        public void setBars(String navHex, String statusHex, boolean dark) {
+            a.runOnUiThread(() -> {
+                try {
+                    Window w = a.getWindow();
+                    w.setStatusBarColor(Color.parseColor("#" + statusHex));
+                    w.setNavigationBarColor(Color.parseColor("#" + navHex));
+                    View d = w.getDecorView();
+                    int f = d.getSystemUiVisibility();
+                    int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                    d.setSystemUiVisibility(dark ? (f & ~light) : (f | light));
+                } catch (Exception ignored) {}
+            });
         }
 
         @JavascriptInterface
