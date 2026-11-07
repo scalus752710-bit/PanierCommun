@@ -60,6 +60,18 @@ nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
 nav a .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.35}
 nav a[aria-current="page"] .dot{opacity:1}
 .sync-dot{width:9px;height:9px;border-radius:50%;background:var(--muted);display:inline-block}.sync-dot[data-s="ok"]{background:var(--accent)}.sync-dot[data-s="wait"]{background:#c58a12}.sync-dot[data-s="err"]{background:#b3261e}
+#lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:16px;overflow:auto}
+.lock-card{width:min(340px,100%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.lock-card h1{font-family:var(--f-display);font-size:1.5rem;margin:6px 0 0}.lock-card p{margin:0}
+.lock-logo img,.lock-logo svg{width:56px;height:56px;border-radius:14px;object-fit:contain}
+.pin-dots{display:flex;gap:14px;margin:18px 0 4px}.pin-dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);transition:background .1s}.pin-dots i.on{background:var(--accent)}
+.pin-dots.shake{animation:pinshake .35s}@keyframes pinshake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.pin-err{min-height:1.3em;color:var(--bad);font-size:.9rem}
+.pin-pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin-top:6px}
+.pin-pad button{height:72px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.5rem;font-weight:700;font-family:var(--f-body)}
+.pin-pad button:active{background:var(--accent-soft)}
+.lockbtn::before{content:"🔒 "}.lockbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:700;font-size:.85rem;white-space:nowrap;flex-shrink:0}
+.acc-tbl th.c,.acc-tbl td.c{text-align:center}.acc-tbl input{width:18px;height:18px}
 .side .who{margin-top:auto;font-size:.82rem;color:var(--muted);padding:10px;border-top:1px solid var(--line)}
 .side .who select{width:100%;margin-top:4px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
 
@@ -210,6 +222,7 @@ svg.ean{display:block;height:auto;border-radius:3px}
   .side{position:sticky;top:env(safe-area-inset-top,0px);height:auto;flex-direction:row;align-items:center;padding:10px max(16px, env(safe-area-inset-right,0px)) 10px max(16px, env(safe-area-inset-left,0px));z-index:20;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;gap:12px}
   body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
   .brand small,.side .who{display:none}
+  .side .brand{order:0}.side .lockbtn{order:1;font-size:0;padding:7px 9px}.side .lockbtn::before{content:"🔒";font-size:1rem}.side nav{order:2}
   nav{flex-direction:row}
   nav a{white-space:nowrap;padding:6px 10px}
   nav a .dot{display:none}
@@ -228,11 +241,8 @@ svg.ean{display:block;height:auto;border-radius:3px}
       <div><b>Panier Commun</b><small>Épicerie solidaire du Bassin</small></div>
     </div>
     <nav id="nav"></nav>
-    <div class="who">Connecté en tant que
-      <select id="role" aria-label="Rôle">
-        <option>Coordinatrice</option><option>Bénévole caisse</option><option>Bénévole accueil</option><option>Trésorier</option>
-      </select>
-    </div>
+    <div class="who" id="whoBox"></div>
+    <button class="lockbtn" id="lockBtn" hidden aria-label="Verrouiller" title="Verrouiller : le prochain utilisateur devra saisir son code">Verrouiller</button>
   </aside>
   <main id="view"></main>
 </div>
@@ -436,7 +446,7 @@ const VIEWS=[
   ["stock","Gestion des Stocks"],["equipe","Équipe"],["rapports","Rapports"]
 ];
 function renderNav(cur){
-  $("#nav").innerHTML=VIEWS.map(([k,l])=>`<a href="#${k}" ${k===cur?'aria-current="page"':""}><span class="dot"></span>${l}</a>`).join("");
+  $("#nav").innerHTML=VIEWS.filter(v=>canSee(v[0])).map(([k,l])=>`<a href="#${k}" ${k===cur?'aria-current="page"':""}><span class="dot"></span>${l}</a>`).join("");
 }
 function renderLogo(){ const img=$("#logoImg"), def=$("#logoDefault"); if(S.logo){ img.src=S.logo; img.hidden=false; def.style.display="none"; } else { img.hidden=true; img.removeAttribute("src"); def.style.display=""; } }
 function readLogo(file){ return new Promise((res,rej)=>{ if(!file||!/^image\//.test(file.type)) return rej(new Error("type"));
@@ -455,8 +465,9 @@ function logoModal(){
   const del=$("#ldel"); if(del) del.onclick=()=>{ S.logo=null; save(); renderLogo(); closeModal(); toast("Logo retiré"); };
 }
 function route(){
-  const h=(location.hash||"").slice(1); const cur=VIEWS.some(v=>v[0]===h)?h:"tableau";
-  renderNav(cur); R[cur](); window.scrollTo(0,0);
+  const h=(location.hash||"").slice(1); let cur=VIEWS.some(v=>v[0]===h)?h:"tableau";
+  if(!canSee(cur)){ const ok=VIEWS.find(v=>canSee(v[0])); if(h&&ok&&me()) toast("Cet écran n'est pas accessible avec votre rôle."); cur=ok?ok[0]:"tableau"; if(ok&&location.hash!=="#"+cur){ history.replaceState(null,"","#"+cur); } }
+  renderNav(cur); renderWho(); R[cur](); window.scrollTo(0,0);
 }
 window.addEventListener("hashchange",route);
 
@@ -698,7 +709,7 @@ R.caisse=function(){
     cart.forEach(l=>{const p=S.produits.find(x=>x.id===l.pid);let q=l.q;
       p.lots.sort((a,b)=>(a.dlc||"9999").localeCompare(b.dlc||"9999")).forEach(lot=>{const t=Math.min(lot.q,q);lot.q-=t;q-=t;});
       p.lots=p.lots.filter(x=>x.q>0);});
-    S.ventes.push({id:uid(),date:iso(TODAY),foyer:cFoyer,lignes:cart.map(l=>({...l})),paye:tot,valeur:val,caisse:$("#role").value,paiement:cPay});
+    S.ventes.push({id:uid(),date:iso(TODAY),foyer:cFoyer,lignes:cart.map(l=>({...l})),paye:tot,valeur:val,caisse:whoName(),paiement:cPay});
     save(); const n=nomF(cFoyer); cart=[]; R.caisse(); toast(`Vente encaissée pour ${n} : ${eur(tot)}`);
   };
 };
@@ -964,6 +975,7 @@ R.equipe=function(){
     <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><h2>Membres</h2><button class="btn small primary" id="addMem">Ajouter un membre</button></div><div class="tbl-wrap"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Statut</th><th>Téléphone</th><th class="r">Missions</th></tr></thead>
       <tbody>${S.equipe.map(e=>`<tr class="click" data-mem="${e.id}" title="Modifier ou supprimer"><td><b>${esc(e.nom)}</b></td><td>${esc(e.role)}</td><td><span class="pill ${String(e.statut).startsWith("Salari")?"acc":"neutral"}">${esc(e.statut)}</span></td><td class="num">${esc(e.tel)}</td><td class="r num">${S.planning.filter(p=>p.qui===e.id).length}</td></tr>`).join("")||`<tr><td colspan="5" class="muted">Aucun membre. Ajoutez le premier.</td></tr>`}</tbody></table></div><p class="muted" style="font-size:.8rem;margin:10px 0 0">Cliquez sur un membre pour le modifier ou le supprimer.</p></div>
   </div>`;
+  V().insertAdjacentHTML("beforeend",accesPanel()); bindAcces();
   V().querySelectorAll("[data-cg]").forEach(b=>b.onclick=()=>{const [i,s]=b.dataset.cg.split("|");S.conges[+i].statut=s;save();R.equipe();toast("Demande "+s.toLowerCase()+"e");});
   const memberModal=id=>{
     const e=id?S.equipe.find(x=>x.id===id):{id:uid(),nom:"",role:"Bénévole caisse",statut:"Bénévole",tel:""};
@@ -972,16 +984,27 @@ R.equipe=function(){
       <label class="full">Nom et prénom<input type="text" id="enm" value="${esc(e.nom)}"></label>
       <label>Rôle<input type="text" id="erl" value="${esc(e.role)}" list="rolel"><datalist id="rolel">${["Coordinatrice","Bénévole caisse","Bénévole accueil","Bénévole stock","Trésorier","Président","Secrétaire"].map(r=>`<option value="${r}">`).join("")}</datalist></label>
       <label>Statut<select id="est">${["Bénévole","Salarié","Salariée","Service civique","Stagiaire"].map(s=>`<option ${s===e.statut?"selected":""}>${s}</option>`).join("")}</select></label>
-      <label class="full">Téléphone<input type="text" id="etl" value="${esc(e.tel)}" inputmode="tel"></label></div>`,
+      <label class="full">Téléphone<input type="text" id="etl" value="${esc(e.tel)}" inputmode="tel"></label>
+      ${canAdmin()?`<label class="full">Code PIN (4 chiffres)<input type="password" id="epin" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="${e.pin?"Code défini : laisser vide pour le garder":"Aucun code : ce membre ne peut pas se connecter"}"></label>${e.pin?`<label class="full" style="flex-direction:row;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="epinDel"> Retirer le code de ce membre</label>`:""}`:""}</div>`,
       `${id?`<button class="btn danger" id="delMem" style="margin-right:auto">Supprimer le membre</button>`:""}<button class="btn" data-close>Annuler</button><button class="btn primary" id="okMem">${id?"Enregistrer":"Ajouter"}</button>`);
     $("#okMem").onclick=()=>{ const n=$("#enm").value.trim(); if(!n){toast("Indiquez le nom du membre.");$("#enm").focus();return;}
-      Object.assign(e,{nom:n,role:$("#erl").value.trim()||"Bénévole",statut:$("#est").value,tel:$("#etl").value.trim()});
-      if(!id) S.equipe.push(e); save(); closeModal(); R.equipe(); toast(id?"Membre modifié":`${n} ajouté à l'équipe`); };
+      const pe=$("#epin"), pv=pe?pe.value.trim():"", pd=$("#epinDel")&&$("#epinDel").checked;
+      if(pv&&!/^\d{4}$/.test(pv)){ toast("Le code PIN doit contenir exactement 4 chiffres."); pe.focus(); return; }
+      if(pv&&S.equipe.some(x=>x!==e&&x.pin&&x.pin===pinHash(x.id,pv))){ toast("Ce code est déjà utilisé par un autre membre. Choisissez-en un autre."); pe.focus(); return; }
+      const newRole=$("#erl").value.trim()||"Bénévole";
+      if(lockOn()&&e.id===WHO&&isAdmin(e)&&!/^coordinat/i.test(newRole)&&!S.equipe.some(x=>x!==e&&isAdmin(x)&&x.pin)){ toast("Gardez au moins une Coordinatrice avec un code PIN."); return; }
+      if(pd&&isAdmin(e)&&!S.equipe.some(x=>x!==e&&isAdmin(x)&&x.pin)&&S.equipe.some(x=>x!==e&&x.pin)){ toast("Gardez au moins une Coordinatrice avec un code PIN tant que d'autres membres en ont un."); return; }
+      const wasOn=lockOn(); let actMsg="";
+      Object.assign(e,{nom:n,role:newRole,statut:$("#est").value,tel:$("#etl").value.trim()});
+      if(pv) e.pin=pinHash(e.id,pv); else if(pd) delete e.pin;
+      if(!wasOn&&lockOn()&&isAdmin(e)&&pv){ WHO=e.id; touchWho(); actMsg="Verrouillage activé : chacun se connecte désormais avec son code."; }
+      if(!id) S.equipe.push(e); save(); closeModal(); route(); toast(actMsg||(id?"Membre modifié":`${n} ajouté à l'équipe`)); };
     const d=$("#delMem"); if(d) d.onclick=()=>{
       if(!d.classList.contains("armed")){ d.classList.add("armed"); d.textContent="Confirmer la suppression";
         const w=document.createElement("p"); w.className="alert bad"; w.style.margin="0";
         w.textContent=nb?`${e.nom} sera retiré de l'équipe, avec ses ${nb} mission(s) du planning.`:`${e.nom} sera retiré de l'équipe.`;
         m.insertBefore(w,m.querySelector(".mf")); return; }
+      if(e.id===WHO){ toast("Vous ne pouvez pas supprimer votre propre compte."); return; }
       S.equipe=S.equipe.filter(x=>x!==e); S.planning=S.planning.filter(p=>p.qui!==e.id); S.conges=S.conges.filter(c=>c.qui!==e.id);
       save(); closeModal(); R.equipe(); toast(`${e.nom} retiré de l'équipe`); };
   };
@@ -1075,7 +1098,7 @@ function bindSyncPanel(){ const i=$("#syncIn"), o=$("#syncOut"); if(i) i.onclick
 function syncRefresh(){
   if($("#modal-root .overlay")){ SYNC.refresh=true; return; }
   const a=document.activeElement; if(a&&a.closest&&a.closest("#view")&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){ SYNC.refresh=true; setTimeout(()=>{ if(SYNC.refresh) syncRefresh(); },1500); return; }
-  SYNC.refresh=false; const y=window.scrollY; const h=(location.hash||"").slice(1); const cur=VIEWS.some(v=>v[0]===h)?h:"tableau"; renderNav(cur); R[cur](); renderLogo(); window.scrollTo(0,y);
+  SYNC.refresh=false; const y=window.scrollY; const h=(location.hash||"").slice(1); let cur=VIEWS.some(v=>v[0]===h)?h:"tableau"; if(!canSee(cur)){ const ok=VIEWS.find(v=>canSee(v[0])); cur=ok?ok[0]:"tableau"; } renderNav(cur); R[cur](); renderLogo(); window.scrollTo(0,y); checkLock();
 }
 window.__syncAfterModal=()=>{ if(SYNC.refresh) setTimeout(syncRefresh,0); };
 function applyRow(row){
@@ -1144,9 +1167,76 @@ function syncInit(){
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") again(); });
 }
 
+/* ---------- Accès par code PIN ---------- */
+const ACC_DEF={"Coordinatrice":VIEWS.map(v=>v[0]),"Bénévole caisse":["tableau","caisse"],"Bénévole accueil":["tableau","foyers"],"Bénévole stock":["tableau","stock"],"Trésorier":["tableau","caisse","rapports"]};
+const WHO_KEY=KEY+"-qui", LOCK_MIN=10;
+const isAdmin=e=>!!e&&/^coordinat/i.test(String(e.role||"").trim());
+const pinHash=(id,pin)=>hashOf("pin|"+id+"|"+pin);
+const lockOn=()=>S.equipe.some(e=>isAdmin(e)&&e.pin);
+const roles=()=>[...new Set(["Coordinatrice","Bénévole caisse","Bénévole accueil","Bénévole stock","Trésorier",...S.equipe.map(e=>String(e.role||"").trim()).filter(Boolean)])];
+const accesRole=r=>/^coordinat/i.test(r)?VIEWS.map(v=>v[0]):((S.acces&&S.acces[r])||ACC_DEF[r]||["tableau"]);
+let WHO=null; try{ const w=JSON.parse(localStorage.getItem(WHO_KEY)); if(w&&Date.now()-w.t<LOCK_MIN*60000) WHO=w.id; }catch(e){}
+const me=()=>S.equipe.find(e=>e.id===WHO)||null;
+const canSee=k=>!lockOn()||(me()&&accesRole(me().role).includes(k));
+const canAdmin=()=>!lockOn()||isAdmin(me());
+const whoName=()=>{ const m=me(); return m?m.nom:"—"; };
+const touchWho=()=>{ if(WHO) try{ localStorage.setItem(WHO_KEY,JSON.stringify({id:WHO,t:Date.now()})); }catch(e){} };
+function renderWho(){
+  const b=$("#whoBox"), l=$("#lockBtn"); if(!b) return;
+  const m=me(); const on=lockOn();
+  b.innerHTML=on&&m?`Connecté : <b style="color:var(--ink)">${esc(m.nom)}</b><br>${esc(m.role)}`:on?"":`<span>Accès libre : définissez un code PIN pour la Coordinatrice dans <a href="#equipe">Équipe</a> pour activer le verrouillage.</span>`;
+  l.hidden=!(on&&m);
+}
+let lockTries=0, lockUntil=0; try{ const t=JSON.parse(localStorage.getItem(KEY+"-essais"))||{}; lockTries=t.n||0; lockUntil=t.u||0; }catch(e){}
+const saveTries=()=>{ try{ localStorage.setItem(KEY+"-essais",JSON.stringify({n:lockTries,u:lockUntil})); }catch(e){} };
+function lockScreen(){
+  if($("#lock")) return;
+  closeModal(); WHO=null; try{ localStorage.removeItem(WHO_KEY); }catch(e){}
+  const d=document.createElement("div"); d.id="lock"; d.setAttribute("role","dialog"); d.setAttribute("aria-modal","true"); d.setAttribute("aria-label","Saisir votre code PIN");
+  d.innerHTML=`<div class="lock-card"><div class="lock-logo">${S.logo?`<img src="${S.logo}" alt="">`:$("#logoDefault").outerHTML.replace('id="logoDefault"',"")}</div><h1>Panier Commun</h1><p class="muted">Entrez votre code à 4 chiffres</p>
+    <div class="pin-dots" aria-live="polite"><i></i><i></i><i></i><i></i></div><p class="pin-err" id="pinErr"></p>
+    <div class="pin-pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join("")}<span></span><button data-k="0">0</button><button data-k="del" aria-label="Effacer">⌫</button></div></div>`;
+  document.body.appendChild(d); document.body.style.overflow="hidden";
+  let code="";
+  const dots=()=>d.querySelectorAll(".pin-dots i").forEach((x,i)=>x.classList.toggle("on",i<code.length));
+  const err=t=>{ d.querySelector("#pinErr").textContent=t; };
+  const tryCode=()=>{
+    if(Date.now()<lockUntil){ err(`Trop d'essais. Réessayez dans ${Math.ceil((lockUntil-Date.now())/1000)} s.`); code=""; dots(); return; }
+    const m=S.equipe.find(e=>e.pin&&e.pin===pinHash(e.id,code));
+    if(m){ WHO=m.id; touchWho(); lockTries=0; saveTries(); d.remove(); document.body.style.overflow=""; renderWho(); route(); toast(`Bonjour ${m.nom.split(" ")[0]}`); return; }
+    lockTries++; if(lockTries>=5){ lockTries=0; lockUntil=Date.now()+30000; err("Trop d'essais. Réessayez dans 30 s."); } else err("Code incorrect."); saveTries();
+    const p=d.querySelector(".pin-dots"); p.classList.remove("shake"); void p.offsetWidth; p.classList.add("shake"); code=""; dots();
+  };
+  const key=k=>{ if(k==="del") code=code.slice(0,-1); else if(code.length<4){ code+=k; err(""); } dots(); if(code.length===4) setTimeout(tryCode,120); };
+  d.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>key(b.dataset.k));
+  d.addEventListener("keydown",e=>{ if(/^\d$/.test(e.key)) key(e.key); else if(e.key==="Backspace") key("del"); e.stopPropagation(); });
+  d.tabIndex=-1; d.focus();
+}
+function needLock(){ return lockOn()&&!me(); }
+function checkLock(){ renderWho(); if(needLock()) lockScreen(); }
+["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,()=>{ if(!$("#lock")) touchWho(); },{passive:true}));
+setInterval(()=>{ if(!lockOn()||!WHO) return; try{ const w=JSON.parse(localStorage.getItem(WHO_KEY)); if(!w||Date.now()-w.t>LOCK_MIN*60000) lockScreen(); }catch(e){} },30000);
+$("#lockBtn").onclick=()=>{ lockScreen(); toast("Session verrouillée"); };
+// Panneau de réglage des accès (Coordinatrice)
+function accesPanel(){
+  if(!canAdmin()) return "";
+  const rs=roles().filter(r=>!/^coordinat/i.test(r));
+  return `<div class="panel" style="margin-top:16px"><h2 style="margin-bottom:4px">Accès par rôle</h2><p class="muted" style="font-size:.85rem;margin:0 0 10px">Cochez les écrans que chaque rôle peut ouvrir. La Coordinatrice a toujours accès à tout. Les codes PIN se règlent en touchant un membre.</p>
+  <div class="tbl-wrap"><table class="acc-tbl"><thead><tr><th>Rôle</th>${VIEWS.map(v=>`<th class="c">${esc(v[1])}</th>`).join("")}</tr></thead><tbody>
+  ${rs.map(r=>`<tr><td><b>${esc(r)}</b></td>${VIEWS.map(([k,l])=>`<td class="c"><input type="checkbox" data-acc="${esc(r)}|${k}" ${accesRole(r).includes(k)?"checked":""} aria-label="${esc(r)} : ${esc(l)}"></td>`).join("")}</tr>`).join("")}
+  </tbody></table></div></div>`;
+}
+function bindAcces(){
+  V().querySelectorAll("[data-acc]").forEach(c=>c.onchange=()=>{
+    const [r,k]=c.dataset.acc.split("|"); S.acces=S.acces||{}; const cur=new Set(accesRole(r));
+    if(c.checked) cur.add(k); else cur.delete(k); S.acces[r]=VIEWS.map(v=>v[0]).filter(x=>cur.has(x)); save(); toast(`Accès de « ${r} » mis à jour`);
+  });
+}
+
 $("#logoSlot").onclick=logoModal; renderLogo();
 syncInit();
 route();
+checkLock();
 })();
 </script>
 
