@@ -527,7 +527,7 @@ R.tableau=function(){
   const echeance=S.foyers.filter(f=>f.epi.on&&f.epi.fin&&daysTo(f.epi.fin)>=0&&daysTo(f.epi.fin)<=30);
   const comm=S.dossiers.filter(d=>d.etape==="Commission");
   V().innerHTML=`
-  <div class="head"><div><div class="eyebrow">${TODAY.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>Tableau de bord</h1><p>Ce qui demande votre attention aujourd'hui.</p></div><span class="sample">Données d'exemple</span></div>
+  <div class="head"><div><div class="eyebrow">${TODAY.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>Tableau de bord</h1><p>Ce qui demande votre attention aujourd'hui.</p></div></div>
   ${syncPanel()}${window.Android?"":`<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px">Application Android</h2><p class="muted" style="margin:0;font-size:.85rem">Installez Panier Commun sur un téléphone Android, puis connectez-vous avec votre compte pour retrouver les mêmes données.</p></div><a class="btn primary" href="${APK_URL}" download style="text-decoration:none">Télécharger l'APK</a></div>`}
   <div class="grid g4" style="margin-bottom:16px">
     <div class="panel kpi"><div class="eyebrow">Bénéficiaires actifs</div><div class="v num">${actifs}</div><div class="s">${S.foyers.reduce((a,f)=>a+nbPers(f),0)} personnes suivies</div></div>
