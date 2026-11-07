@@ -1182,7 +1182,8 @@ R.equipe=function(){
   V().querySelectorAll("[data-mem]").forEach(r=>r.onclick=()=>memberModal(r.dataset.mem));
   const missionModal=(k,def)=>{
     const p=k!=null?S.planning[k]:{jour:def?.jour||1,creneau:def?.creneau||"Matin",qui:S.equipe[0]?.id,mission:"Caisse"};
-    const MISS=[...new Set(["Accueil","Caisse","Inventaire","Mise en rayon","Mise en stock",...S.planning.map(x=>x.mission),p.mission].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr"));
+    const RETIREES=["Mise en rayon"]; // missions retirées du menu
+    const MISS=[...new Set(["Accueil","Caisse","Inventaire","Mise en stock",...S.planning.map(x=>x.mission).filter(x=>!RETIREES.includes(x)),p.mission].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr"));
     modal(k!=null?"Modifier la mission":"Ajouter une mission",`<div class="form"><label>Membre<select id="mq">${S.equipe.map(e=>`<option value="${e.id}" ${e.id===p.qui?"selected":""}>${esc(e.nom)}</option>`).join("")}</select></label>
       <label>Mission<select id="mm">${MISS.map(x=>`<option ${x===p.mission?"selected":""}>${esc(x)}</option>`).join("")}<option value="__autre">Autre mission…</option></select></label>
       <label class="full" id="mmoWrap" hidden>Nom de la mission<input type="text" id="mmo" placeholder="Ex. : Collecte en magasin"></label>
