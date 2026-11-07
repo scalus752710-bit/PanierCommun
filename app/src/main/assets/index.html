@@ -255,7 +255,7 @@ svg.ean{display:block;height:auto;border-radius:3px}
   <aside class="side">
     <div class="brand">
       <button class="logo-slot" id="logoSlot" title="Ajouter ou changer le logo" aria-label="Logo de l'association"><svg id="logoDefault" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="9" fill="var(--accent)"/><path d="M8 14h18l-2.2 11a2 2 0 0 1-2 1.6H12.2a2 2 0 0 1-2-1.6Z" fill="var(--accent-ink)"/><path d="M12.5 14 15 8.5M21.5 14 19 8.5" stroke="var(--accent-ink)" stroke-width="2" stroke-linecap="round" fill="none"/></svg><img id="logoImg" alt="Logo" hidden><span class="logo-edit" aria-hidden="true">✎</span></button>
-      <div><b>Panier Commun</b><small>Épicerie solidaire du <span class="casoc">CASOC</span></small></div>
+      <div><b>Panier Commun</b><small>Épicerie solidaire</small></div>
     </div>
     <nav id="nav"></nav>
     <div class="logos2"><button class="logo2" id="logo2Slot" title="Ajouter ou changer ce logo"></button><button class="logo2" id="logo3Slot" title="Ajouter ou changer ce logo"></button></div>
@@ -1123,7 +1123,7 @@ R.dons=function(){
 function recuModal(id){
   const d=S.dons.find(x=>x.id===id); const n=String(S.dons.indexOf(d)+1).padStart(4,"0");
   modal("Reçu au titre des dons",`<div class="receipt">
-    <div class="rt"><div><b>Panier Commun</b><div class="muted" style="font-size:.82rem">Épicerie solidaire du <span class="casoc">CASOC</span> · association loi 1901<br>Aide alimentaire aux personnes en difficulté</div></div><div style="text-align:right"><b class="num">N° ${TODAY.getFullYear()}-${n}</b><div class="muted" style="font-size:.82rem">Modèle Cerfa n° 11580</div></div></div>
+    <div class="rt"><div><b>Panier Commun</b><div class="muted" style="font-size:.82rem">Épicerie solidaire · association loi 1901<br>Aide alimentaire aux personnes en difficulté</div></div><div style="text-align:right"><b class="num">N° ${TODAY.getFullYear()}-${n}</b><div class="muted" style="font-size:.82rem">Modèle Cerfa n° 11580</div></div></div>
     <dl class="dl"><dt>Donateur</dt><dd>${esc(d.donateur)}</dd><dt>Adresse</dt><dd>${esc(d.adresse||"À compléter")}</dd><dt>Date du don</dt><dd>${fmtD(d.date)}</dd>
     <dt>Montant</dt><dd class="num">${eur(d.montant)}</dd><dt>Forme</dt><dd>${esc(d.canal)}${d.ref?" · "+esc(d.ref):""}</dd><dt>Nature</dt><dd>Numéraire</dd></dl>
     <p class="muted" style="font-size:.82rem;margin:4px 0 0">Le bénéficiaire certifie que ce don ouvre droit à la réduction d'impôt prévue aux articles 200 et 238 bis du CGI. Pour les particuliers, les dons aux organismes d'aide aux personnes en difficulté ouvrent droit à 75 % dans la limite du plafond en vigueur, puis 66 %.</p>
