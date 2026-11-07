@@ -1182,12 +1182,16 @@ R.equipe=function(){
   V().querySelectorAll("[data-mem]").forEach(r=>r.onclick=()=>memberModal(r.dataset.mem));
   const missionModal=(k,def)=>{
     const p=k!=null?S.planning[k]:{jour:def?.jour||1,creneau:def?.creneau||"Matin",qui:S.equipe[0]?.id,mission:"Caisse"};
+    const MISS=[...new Set(["Accueil","Caisse","Inventaire","Mise en rayon","Mise en stock",...S.planning.map(x=>x.mission),p.mission].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr"));
     modal(k!=null?"Modifier la mission":"Ajouter une mission",`<div class="form"><label>Membre<select id="mq">${S.equipe.map(e=>`<option value="${e.id}" ${e.id===p.qui?"selected":""}>${esc(e.nom)}</option>`).join("")}</select></label>
-      <label>Mission<input type="text" id="mm" value="${esc(p.mission)}" list="missl"><datalist id="missl">${[...new Set([...S.planning.map(x=>x.mission),"Mise en stock","Inventaire"].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr")).map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
+      <label>Mission<select id="mm">${MISS.map(x=>`<option ${x===p.mission?"selected":""}>${esc(x)}</option>`).join("")}<option value="__autre">Autre mission…</option></select></label>
+      <label class="full" id="mmoWrap" hidden>Nom de la mission<input type="text" id="mmo" placeholder="Ex. : Collecte en magasin"></label>
       <label>Jour<select id="mj">${jours.map((j,i)=>`<option value="${i+1}" ${i+1===p.jour?"selected":""}>${j}</option>`).join("")}</select></label>
       <label>Créneau<select id="mc">${["Matin","Après-midi"].map(c=>`<option ${c===p.creneau?"selected":""}>${c}</option>`).join("")}</select></label></div>`,
       `${k!=null?`<button class="btn danger" id="delM" style="margin-right:auto">Supprimer</button>`:""}<button class="btn" data-close>Annuler</button><button class="btn primary" id="okM">${k!=null?"Enregistrer":"Ajouter"}</button>`);
-    $("#okM").onclick=()=>{const v={jour:+$("#mj").value,creneau:$("#mc").value,qui:$("#mq").value,mission:$("#mm").value.trim()||"Mission"};
+    $("#mm").onchange=()=>{ const o=$("#mm").value==="__autre"; $("#mmoWrap").hidden=!o; if(o) $("#mmo").focus(); };
+    $("#okM").onclick=()=>{ const sel=$("#mm").value, mis=sel==="__autre"?$("#mmo").value.trim():sel; if(!mis){ toast("Indiquez le nom de la mission."); $("#mmo").focus(); return; }
+      const v={jour:+$("#mj").value,creneau:$("#mc").value,qui:$("#mq").value,mission:mis};
       if(k!=null) S.planning[k]=v; else S.planning.push(v); save();closeModal();R.equipe();toast(k!=null?"Mission modifiée":"Mission ajoutée");};
     const d=$("#delM"); if(d) d.onclick=()=>{ if(!d.classList.contains("armed")){d.classList.add("armed");d.textContent="Confirmer la suppression";return;}
       S.planning.splice(k,1); save();closeModal();R.equipe();toast("Mission supprimée"); };
