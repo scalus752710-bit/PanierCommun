@@ -322,10 +322,10 @@ function seed(){
   ];
   const equipe=[
     {id:"e1",nom:"Chantal Vasseur",role:"Coordinatrice",statut:"Salariée",tel:"06 12 48 77 20"},
-    {id:"e2",nom:"Michel Dubois",role:"Bénévole caisse",statut:"Bénévole",tel:"06 31 22 90 14"},
-    {id:"e3",nom:"Nadia Ferhat",role:"Bénévole accueil",statut:"Bénévole",tel:"07 68 10 55 03"},
-    {id:"e4",nom:"Gérard Lemaire",role:"Trésorier",statut:"Bénévole",tel:"06 77 41 08 62"},
-    {id:"e5",nom:"Inès Carpentier",role:"Bénévole stock",statut:"Bénévole",tel:"06 50 19 33 47"}
+    {id:"e2",nom:"Michel Dubois",role:"Animatrice",statut:"Bénévole",tel:"06 31 22 90 14"},
+    {id:"e3",nom:"Nadia Ferhat",role:"Animatrice",statut:"Bénévole",tel:"07 68 10 55 03"},
+    {id:"e4",nom:"Gérard Lemaire",role:"Facturation",statut:"Bénévole",tel:"06 77 41 08 62"},
+    {id:"e5",nom:"Inès Carpentier",role:"Directrice",statut:"Bénévole",tel:"06 50 19 33 47"}
   ];
   const planning=[
     {jour:1,creneau:"Matin",qui:"e5",mission:"Ramasse supermarché"},{jour:1,creneau:"Après-midi",qui:"e2",mission:"Caisse"},{jour:1,creneau:"Après-midi",qui:"e3",mission:"Accueil"},
@@ -978,11 +978,11 @@ R.equipe=function(){
   V().insertAdjacentHTML("beforeend",accesPanel()); bindAcces();
   V().querySelectorAll("[data-cg]").forEach(b=>b.onclick=()=>{const [i,s]=b.dataset.cg.split("|");S.conges[+i].statut=s;save();R.equipe();toast("Demande "+s.toLowerCase()+"e");});
   const memberModal=id=>{
-    const e=id?S.equipe.find(x=>x.id===id):{id:uid(),nom:"",role:"Bénévole caisse",statut:"Bénévole",tel:""};
+    const e=id?S.equipe.find(x=>x.id===id):{id:uid(),nom:"",role:"Animatrice",statut:"Bénévole",tel:""};
     const nb=S.planning.filter(p=>p.qui===e.id).length;
     const m=modal(id?e.nom:"Ajouter un membre",`<div class="form">
       <label class="full">Nom et prénom<input type="text" id="enm" value="${esc(e.nom)}"></label>
-      <label>Rôle<input type="text" id="erl" value="${esc(e.role)}" list="rolel"><datalist id="rolel">${["Coordinatrice","Bénévole caisse","Bénévole accueil","Bénévole stock","Trésorier","Président","Secrétaire"].map(r=>`<option value="${r}">`).join("")}</datalist></label>
+      <label>Rôle<select id="erl">${[...new Set([...ROLES,...(e.role&&!ROLES.includes(e.role)?[e.role]:[])])].map(r=>`<option ${r===e.role?"selected":""}>${esc(r)}</option>`).join("")}</select></label>
       <label>Statut<select id="est">${["Bénévole","Salarié","Salariée","Service civique","Stagiaire"].map(s=>`<option ${s===e.statut?"selected":""}>${s}</option>`).join("")}</select></label>
       <label class="full">Téléphone<input type="text" id="etl" value="${esc(e.tel)}" inputmode="tel"></label>
       ${canAdmin()?`<label class="full">Code PIN (4 chiffres)<input type="password" id="epin" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="${e.pin?"Code défini : laisser vide pour le garder":"Aucun code : ce membre ne peut pas se connecter"}"></label>${e.pin?`<label class="full" style="flex-direction:row;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="epinDel"> Retirer le code de ce membre</label>`:""}`:""}</div>`,
@@ -991,7 +991,7 @@ R.equipe=function(){
       const pe=$("#epin"), pv=pe?pe.value.trim():"", pd=$("#epinDel")&&$("#epinDel").checked;
       if(pv&&!/^\d{4}$/.test(pv)){ toast("Le code PIN doit contenir exactement 4 chiffres."); pe.focus(); return; }
       if(pv&&S.equipe.some(x=>x!==e&&x.pin&&x.pin===pinHash(x.id,pv))){ toast("Ce code est déjà utilisé par un autre membre. Choisissez-en un autre."); pe.focus(); return; }
-      const newRole=$("#erl").value.trim()||"Bénévole";
+      const newRole=$("#erl").value||"Animatrice";
       if(lockOn()&&e.id===WHO&&isAdmin(e)&&!/^coordinat/i.test(newRole)&&!S.equipe.some(x=>x!==e&&isAdmin(x)&&x.pin)){ toast("Gardez au moins une Coordinatrice avec un code PIN."); return; }
       if(pd&&isAdmin(e)&&!S.equipe.some(x=>x!==e&&isAdmin(x)&&x.pin)&&S.equipe.some(x=>x!==e&&x.pin)){ toast("Gardez au moins une Coordinatrice avec un code PIN tant que d'autres membres en ont un."); return; }
       const wasOn=lockOn(); let actMsg="";
@@ -1168,12 +1168,13 @@ function syncInit(){
 }
 
 /* ---------- Accès par code PIN ---------- */
-const ACC_DEF={"Coordinatrice":VIEWS.map(v=>v[0]),"Bénévole caisse":["tableau","caisse"],"Bénévole accueil":["tableau","foyers"],"Bénévole stock":["tableau","stock"],"Trésorier":["tableau","caisse","rapports"]};
+const ROLES=["Coordinatrice","Directrice","Animatrice","Facturation"];
+const ACC_DEF={"Coordinatrice":VIEWS.map(v=>v[0]),"Directrice":VIEWS.map(v=>v[0]),"Animatrice":["tableau","foyers","caisse"],"Facturation":["tableau","caisse","rapports"]};
 const WHO_KEY=KEY+"-qui", LOCK_MIN=10;
 const isAdmin=e=>!!e&&/^coordinat/i.test(String(e.role||"").trim());
 const pinHash=(id,pin)=>hashOf("pin|"+id+"|"+pin);
 const lockOn=()=>S.equipe.some(e=>isAdmin(e)&&e.pin);
-const roles=()=>[...new Set(["Coordinatrice","Bénévole caisse","Bénévole accueil","Bénévole stock","Trésorier",...S.equipe.map(e=>String(e.role||"").trim()).filter(Boolean)])];
+const roles=()=>[...new Set([...ROLES,...S.equipe.map(e=>String(e.role||"").trim()).filter(Boolean)])];
 const accesRole=r=>/^coordinat/i.test(r)?VIEWS.map(v=>v[0]):((S.acces&&S.acces[r])||ACC_DEF[r]||["tableau"]);
 let WHO=null; try{ const w=JSON.parse(localStorage.getItem(WHO_KEY)); if(w&&Date.now()-w.t<LOCK_MIN*60000) WHO=w.id; }catch(e){}
 const me=()=>S.equipe.find(e=>e.id===WHO)||null;
