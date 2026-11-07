@@ -46,6 +46,7 @@ button{cursor:pointer}
 .brand svg{flex:none}
 .logo-slot{position:relative;flex:none;width:44px;height:44px;border:1px dashed transparent;border-radius:10px;background:none;padding:0;display:grid;place-items:center}
 .logo-slot:hover,.logo-slot:focus-visible{border-color:var(--accent)}
+.logos2{display:flex;flex-direction:column;gap:6px;margin-top:6px}.logos2 .logo2{margin-top:0}
 .logo2{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:72px;margin-top:6px;padding:8px;border:1px dashed transparent;border-radius:10px;background:none;color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer}
 .logo2 img{max-width:100%;max-height:110px;object-fit:contain;border-radius:6px}
 .logo2.empty{border-color:var(--line)}.logo2:hover,.logo2:focus-visible{border-color:var(--accent);color:var(--accent)}
@@ -232,7 +233,7 @@ svg.ean{display:block;height:auto;border-radius:3px}
   .side{position:sticky;top:env(safe-area-inset-top,0px);height:auto;flex-direction:row;align-items:center;padding:10px max(16px, env(safe-area-inset-right,0px)) 10px max(16px, env(safe-area-inset-left,0px));z-index:20;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;gap:12px}
   body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
   .brand small,.side .who{display:none}
-  .side .brand{order:0}.side .lockbtn{order:1;font-size:0;padding:7px 9px}.side .lockbtn::before{content:"🔒";font-size:1rem}.side nav{order:2}.side .logo2{order:3;width:auto;min-height:0;margin:0;padding:2px;flex-shrink:0}.side .logo2 img{max-height:36px;max-width:110px}.side .logo2.empty{display:none}
+  .side .brand{order:0}.side .lockbtn{order:1;font-size:0;padding:7px 9px}.side .lockbtn::before{content:"🔒";font-size:1rem}.side nav{order:2}.side .logos2{order:3;flex-direction:row;margin:0;flex-shrink:0;gap:6px}.side .logo2{width:auto;min-height:0;margin:0;padding:2px;flex-shrink:0}.side .logo2 img{max-height:36px;max-width:110px}.side .logo2.empty{display:none}
   nav{flex-direction:row}
   nav a{white-space:nowrap;padding:6px 10px}
   nav a .dot{display:none}
@@ -251,7 +252,7 @@ svg.ean{display:block;height:auto;border-radius:3px}
       <div><b>Panier Commun</b><small>Épicerie solidaire du Bassin</small></div>
     </div>
     <nav id="nav"></nav>
-    <button class="logo2" id="logo2Slot" title="Ajouter ou changer ce logo"></button>
+    <div class="logos2"><button class="logo2" id="logo2Slot" title="Ajouter ou changer ce logo"></button><button class="logo2" id="logo3Slot" title="Ajouter ou changer ce logo"></button></div>
     <div class="who" id="whoBox"></div>
     <button class="lockbtn" id="lockBtn" hidden aria-label="Verrouiller" title="Verrouiller : le prochain utilisateur devra saisir son code">Verrouiller</button>
   </aside>
@@ -463,19 +464,19 @@ function renderNav(cur){
   $("#nav").innerHTML=VIEWS.filter(v=>canSee(v[0])).map(([k,l])=>`<a href="#${k}" ${k===cur?'aria-current="page"':""}><span class="dot"></span>${l}</a>`).join("");
 }
 function renderLogo(){ const img=$("#logoImg"), def=$("#logoDefault"); if(S.logo){ img.src=S.logo; img.hidden=false; def.style.display="none"; } else { img.hidden=true; img.removeAttribute("src"); def.style.display=""; } renderLogo2(); }
-function renderLogo2(){ const b=$("#logo2Slot"); if(!b) return; b.classList.toggle("empty",!S.logo2); b.setAttribute("aria-label",S.logo2?"Changer le logo sous le menu":"Ajouter un logo sous le menu"); b.innerHTML=S.logo2?`<img src="${S.logo2}" alt="Logo">`:`<span aria-hidden="true">+</span> Ajouter un logo`; }
+function renderLogo2(){ [["logo2","#logo2Slot","premier"],["logo3","#logo3Slot","second"]].forEach(([k,id,n])=>{ const b=$(id); if(!b) return; b.classList.toggle("empty",!S[k]); b.setAttribute("aria-label",S[k]?`Changer le ${n} logo sous le menu`:`Ajouter un ${n} logo sous le menu`); b.innerHTML=S[k]?`<img src="${S[k]}" alt="Logo">`:`<span aria-hidden="true">+</span> Ajouter un logo`; }); }
 function readLogo(file,max){ max=max||256; return new Promise((res,rej)=>{ if(!file||!/^image\//.test(file.type)) return rej(new Error("type"));
   const fr=new FileReader(); fr.onerror=()=>rej(fr.error); fr.onload=()=>{ if(file.type==="image/svg+xml"&&fr.result.length<200000) return res(fr.result);
     const im=new Image(); im.onerror=()=>rej(new Error("img")); im.onload=()=>{ const k=Math.min(1,max/Math.max(im.width,im.height)); const c=document.createElement("canvas");
       c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext("2d").drawImage(im,0,0,c.width,c.height); res(c.toDataURL("image/png")); }; im.src=fr.result; };
   fr.readAsDataURL(file); }); }
 function logoModal(key){
-  key=key==="logo2"?"logo2":"logo";
-  const m=modal(key==="logo2"?"Logo sous le menu":"Logo de l'association",`<div class="logo-drop" id="ldrop">${S[key]?`<img src="${S[key]}" alt="Logo actuel">`:`<p class="muted" style="margin:0">Aucun logo pour l'instant.</p>`}
+  const sub=key==="logo2"||key==="logo3"; key=sub?key:"logo";
+  const m=modal(sub?(key==="logo2"?"Premier logo sous le menu":"Second logo sous le menu"):"Logo de l'association",`<div class="logo-drop" id="ldrop">${S[key]?`<img src="${S[key]}" alt="Logo actuel">`:`<p class="muted" style="margin:0">Aucun logo pour l'instant.</p>`}
     <label class="btn" style="flex-direction:row;color:var(--ink);font-size:.9rem;cursor:pointer">Choisir une image<input type="file" id="lfile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
-    <p class="muted" style="margin:0;font-size:.82rem">Ou glissez l'image ici. PNG, JPG, WebP ou SVG. ${key==="logo2"?"Logo d'un partenaire, d'un financeur ou de la mairie : toutes les formes conviennent.":"Un logo carré ou rond rend mieux."}</p></div>`,
+    <p class="muted" style="margin:0;font-size:.82rem">Ou glissez l'image ici. PNG, JPG, WebP ou SVG. ${sub?"Logo d'un partenaire, d'un financeur ou de la mairie : toutes les formes conviennent.":"Un logo carré ou rond rend mieux."}</p></div>`,
     `${S[key]?`<button class="btn danger" id="ldel" style="margin-right:auto">Retirer le logo</button>`:""}<button class="btn" data-close>Fermer</button>`);
-  const take=async f=>{ try{ S[key]=await readLogo(f,key==="logo2"?480:256); save(); renderLogo(); closeModal(); toast("Logo enregistré"); }catch(e){ toast("Ce fichier n'est pas une image lisible. Essayez un PNG ou un JPG."); } };
+  const take=async f=>{ try{ S[key]=await readLogo(f,sub?480:256); save(); renderLogo(); closeModal(); toast("Logo enregistré"); }catch(e){ toast("Ce fichier n'est pas une image lisible. Essayez un PNG ou un JPG."); } };
   $("#lfile").onchange=e=>take(e.target.files[0]);
   const d=$("#ldrop"); d.ondragover=e=>{e.preventDefault();d.style.borderColor="var(--accent)";}; d.ondragleave=()=>d.style.borderColor=""; d.ondrop=e=>{e.preventDefault();take(e.dataTransfer.files[0]);};
   const del=$("#ldel"); if(del) del.onclick=()=>{ S[key]=null; save(); renderLogo(); closeModal(); toast("Logo retiré"); };
@@ -1400,7 +1401,7 @@ function bindAcces(){
   });
 }
 
-$("#logoSlot").onclick=()=>logoModal("logo"); $("#logo2Slot").onclick=()=>logoModal("logo2"); renderLogo();
+$("#logoSlot").onclick=()=>logoModal("logo"); $("#logo2Slot").onclick=()=>logoModal("logo2"); $("#logo3Slot").onclick=()=>logoModal("logo3"); renderLogo();
 syncInit();
 route();
 checkLock();
