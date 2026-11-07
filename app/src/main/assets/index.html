@@ -10,7 +10,7 @@
   --bg:#f3f5f1; --surface:#ffffff; --sunk:#e8ece5; --line:#d5dbd1;
   --ink:#1b231e; --muted:#5d6a61;
   --accent:#2c6a4c; --accent-ink:#ffffff; --accent-soft:#dcebe2;
-  --mustard:#b57a10; --mustard-soft:#f6e9cc;
+  --mustard:#b57a10; --mustard-soft:#f6e9cc; --casoc:#1d4ed8;
   --ok:#2d7a3e; --warn:#b26b00; --bad:#b3261e;
   --ok-soft:#dff0e2; --warn-soft:#fbecd2; --bad-soft:#f8dedb;
   --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
@@ -21,14 +21,14 @@
   --bg:#121714; --surface:#1a211c; --sunk:#222b25; --line:#323d35;
   --ink:#e7ede8; --muted:#9aa89e;
   --accent:#6fc297; --accent-ink:#0d1d14; --accent-soft:#1f3a2b;
-  --mustard:#e0a940; --mustard-soft:#3a2f17;
+  --mustard:#e0a940; --mustard-soft:#3a2f17; --casoc:#7aa7ff;
   --ok:#74c98a; --warn:#e7a54a; --bad:#f08a80;
   --ok-soft:#1d3523; --warn-soft:#3a2c16; --bad-soft:#3d1f1c; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#121714; --surface:#1a211c; --sunk:#222b25; --line:#323d35;
   --ink:#e7ede8; --muted:#9aa89e;
   --accent:#6fc297; --accent-ink:#0d1d14; --accent-soft:#1f3a2b;
-  --mustard:#e0a940; --mustard-soft:#3a2f17;
+  --mustard:#e0a940; --mustard-soft:#3a2f17; --casoc:#7aa7ff;
   --ok:#74c98a; --warn:#e7a54a; --bad:#f08a80;
   --ok-soft:#1d3523; --warn-soft:#3a2c16; --bad-soft:#3d1f1c; color-scheme:dark}
 
@@ -84,6 +84,7 @@ nav a[aria-current="page"] .dot{opacity:1}
 .rscan{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px dashed var(--accent);border-radius:8px;background:var(--accent-soft)}.rscan .scanbar{margin:0}.rscan .scanvid{margin-top:4px}
 .themebtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:700;font-size:.85rem;white-space:nowrap;flex-shrink:0;cursor:pointer}
 body.logos-locked .logo2.empty{display:none!important}body.logos-locked .logo2,body.logos-locked .logo-slot{cursor:default;border-color:transparent!important}body.logos-locked .logo-edit{display:none}
+.casoc{color:var(--casoc);font-weight:700;letter-spacing:.02em}
 .lockbtn::before{content:"🔒 "}.lockbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:700;font-size:.85rem;white-space:nowrap;flex-shrink:0}
 .acc-tbl th.c,.acc-tbl td.c{text-align:center}.acc-tbl input{width:18px;height:18px}
 .side .who{margin-top:auto;font-size:.82rem;color:var(--muted);padding:10px;border-top:1px solid var(--line)}
@@ -254,7 +255,7 @@ svg.ean{display:block;height:auto;border-radius:3px}
   <aside class="side">
     <div class="brand">
       <button class="logo-slot" id="logoSlot" title="Ajouter ou changer le logo" aria-label="Logo de l'association"><svg id="logoDefault" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="9" fill="var(--accent)"/><path d="M8 14h18l-2.2 11a2 2 0 0 1-2 1.6H12.2a2 2 0 0 1-2-1.6Z" fill="var(--accent-ink)"/><path d="M12.5 14 15 8.5M21.5 14 19 8.5" stroke="var(--accent-ink)" stroke-width="2" stroke-linecap="round" fill="none"/></svg><img id="logoImg" alt="Logo" hidden><span class="logo-edit" aria-hidden="true">✎</span></button>
-      <div><b>Panier Commun</b><small>Épicerie solidaire du Bassin</small></div>
+      <div><b>Panier Commun</b><small>Épicerie solidaire du <span class="casoc">CASOC</span></small></div>
     </div>
     <nav id="nav"></nav>
     <div class="logos2"><button class="logo2" id="logo2Slot" title="Ajouter ou changer ce logo"></button><button class="logo2" id="logo3Slot" title="Ajouter ou changer ce logo"></button></div>
@@ -1122,7 +1123,7 @@ R.dons=function(){
 function recuModal(id){
   const d=S.dons.find(x=>x.id===id); const n=String(S.dons.indexOf(d)+1).padStart(4,"0");
   modal("Reçu au titre des dons",`<div class="receipt">
-    <div class="rt"><div><b>Panier Commun</b><div class="muted" style="font-size:.82rem">Épicerie solidaire du Bassin · association loi 1901<br>Aide alimentaire aux personnes en difficulté</div></div><div style="text-align:right"><b class="num">N° ${TODAY.getFullYear()}-${n}</b><div class="muted" style="font-size:.82rem">Modèle Cerfa n° 11580</div></div></div>
+    <div class="rt"><div><b>Panier Commun</b><div class="muted" style="font-size:.82rem">Épicerie solidaire du <span class="casoc">CASOC</span> · association loi 1901<br>Aide alimentaire aux personnes en difficulté</div></div><div style="text-align:right"><b class="num">N° ${TODAY.getFullYear()}-${n}</b><div class="muted" style="font-size:.82rem">Modèle Cerfa n° 11580</div></div></div>
     <dl class="dl"><dt>Donateur</dt><dd>${esc(d.donateur)}</dd><dt>Adresse</dt><dd>${esc(d.adresse||"À compléter")}</dd><dt>Date du don</dt><dd>${fmtD(d.date)}</dd>
     <dt>Montant</dt><dd class="num">${eur(d.montant)}</dd><dt>Forme</dt><dd>${esc(d.canal)}${d.ref?" · "+esc(d.ref):""}</dd><dt>Nature</dt><dd>Numéraire</dd></dl>
     <p class="muted" style="font-size:.82rem;margin:4px 0 0">Le bénéficiaire certifie que ce don ouvre droit à la réduction d'impôt prévue aux articles 200 et 238 bis du CGI. Pour les particuliers, les dons aux organismes d'aide aux personnes en difficulté ouvrent droit à 75 % dans la limite du plafond en vigueur, puis 66 %.</p>
