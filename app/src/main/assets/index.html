@@ -524,7 +524,7 @@ R.tableau=function(){
   <div class="head"><div><div class="eyebrow">${TODAY.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>Tableau de bord</h1><p>Ce qui demande votre attention aujourd'hui.</p></div><span class="sample">Données d'exemple</span></div>
   ${syncPanel()}${window.Android?"":`<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px">Application Android</h2><p class="muted" style="margin:0;font-size:.85rem">Installez Panier Commun sur un téléphone Android, puis connectez-vous avec votre compte pour retrouver les mêmes données.</p></div><a class="btn primary" href="${APK_URL}" download style="text-decoration:none">Télécharger l'APK</a></div>`}
   <div class="grid g4" style="margin-bottom:16px">
-    <div class="panel kpi"><div class="eyebrow">Foyers actifs</div><div class="v num">${actifs}</div><div class="s">${S.foyers.reduce((a,f)=>a+nbPers(f),0)} personnes suivies</div></div>
+    <div class="panel kpi"><div class="eyebrow">Bénéficiaires actifs</div><div class="v num">${actifs}</div><div class="s">${S.foyers.reduce((a,f)=>a+nbPers(f),0)} personnes suivies</div></div>
     <div class="panel kpi"><div class="eyebrow">Passages du jour</div><div class="v num">${vj.length}</div><div class="s">${eur(vj.reduce((a,v)=>a+v.paye,0))} encaissés</div><button class="btn small" data-raz="jour" style="margin-top:10px">Remettre à zéro</button></div>
     <div class="panel kpi"><div class="eyebrow">Valeur distribuée ce mois</div><div class="v num">${eur(vm.reduce((a,v)=>a+v.valeur,0))}</div><div class="s">${vm.length} passages en caisse</div><button class="btn small" data-raz="mois" style="margin-top:10px">Remettre à zéro</button></div>
     <div class="panel kpi"><div class="eyebrow">DLC à 7 jours</div><div class="v num" style="color:${dlcP.length?"var(--warn)":"inherit"}">${dlcP.length}</div><div class="s">lots à sortir en priorité</div></div>
@@ -553,17 +553,17 @@ R.foyers=function(){
     return true;
   });
   V().innerHTML=`
-  <div class="head"><div><h1>Gestion Bénéficiaires</h1><p>Composition et droits d'accès de chaque foyer.</p></div><button class="btn primary" id="addF">Nouveau Bénéficiaire</button></div>
+  <div class="head"><div><h1>Gestion Bénéficiaires</h1><p>Composition et droits d'accès de chaque bénéficiaire.</p></div><button class="btn primary" id="addF">Nouveau Bénéficiaire</button></div>
   <div class="panel">
     <div class="toolbar"><input type="search" id="fq" placeholder="Rechercher un nom…" value="${esc(fQuery)}" aria-label="Rechercher">
       <div class="seg" role="group" aria-label="Filtre">${[["tous","Tous"],["actifs","Accès actif"],["expires","Sans accès"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${fFilter===k}">${l}</button>`).join("")}</div></div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Foyer</th><th>Composition</th><th>Épicerie</th><th>Boutique</th><th class="r">Payé ce mois</th></tr></thead>
+      <thead><tr><th>Bénéficiaire</th><th>Composition</th><th>Épicerie</th><th>Boutique</th><th class="r">Payé ce mois</th></tr></thead>
       <tbody>${list.map(f=>{const r=rav(f);return `<tr class="click" data-id="${f.id}">
         <td><b>${esc(f.prenom)} ${esc(f.nom)}</b><div class="muted" style="font-size:.8rem">${esc(f.situation)}${f.qf!=null&&f.qf!==""?` · QF ${esc(f.qf)} €`:""}</div></td>
         <td>${f.adultes} adulte${f.adultes>1?"s":""}${f.enfants.length?`, ${f.enfants.length} enfant${f.enfants.length>1?"s":""}`:""}</td>
         <td>${accessPill(f.epi)}</td><td>${accessPill(f.bou)}</td>
-        <td class="r num">${eur(payeMois(f.id))}${f.epi.plafond?` <span class="muted">/ ${f.epi.plafond} €</span>`:""}</td></tr>`;}).join("")||`<tr><td colspan="5" class="muted">Aucun foyer ne correspond.</td></tr>`}</tbody></table></div>
+        <td class="r num">${eur(payeMois(f.id))}${f.epi.plafond?` <span class="muted">/ ${f.epi.plafond} €</span>`:""}</td></tr>`;}).join("")||`<tr><td colspan="5" class="muted">Aucun bénéficiaire ne correspond.</td></tr>`}</tbody></table></div>
     <p hidden class="muted" style="font-size:.8rem;margin:12px 0 0">Reste à vivre = (revenus − charges) ÷ personnes ÷ 30 jours. Barème : <span class="light bad"></span> moins de 7 € · <span class="light warn"></span> 7 à 12 € · <span class="light ok"></span> plus de 12 €.</p>
   </div>`;
   $("#fq").addEventListener("input",e=>{fQuery=e.target.value; const p=e.target.selectionStart; R.foyers(); const n=$("#fq"); n.focus(); n.setSelectionRange(p,p);});
@@ -587,7 +587,7 @@ function foyerModal(id){
       <div class="full" id="ages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px"></div>
     </div>
     ${id?`<h3 style="margin:18px 0 6px">Derniers passages</h3><div class="tbl-wrap"><table><thead><tr><th>Date</th><th class="r">Payé</th><th class="r">Valeur distribuée</th></tr></thead><tbody>${hist.slice(-5).reverse().map(v=>`<tr><td>${fmtD(v.date)}</td><td class="r num">${eur(v.paye)}</td><td class="r num">${eur(v.valeur)}</td></tr>`).join("")||`<tr><td colspan="3" class="muted">Aucun passage.</td></tr>`}</tbody></table></div><p class="muted" style="font-size:.85rem">${hist.length} passages au total · ${eur(hist.reduce((a,v)=>a+v.paye,0))} payés · ${eur(hist.reduce((a,v)=>a+v.valeur,0))} distribués</p>`:""}
-  `,`${id?`<button class="btn danger" id="delF" style="margin-right:auto">Supprimer le foyer</button>`:""}<button class="btn" data-close>Annuler</button><button class="btn primary" id="saveF">Enregistrer</button>`);
+  `,`${id?`<button class="btn danger" id="delF" style="margin-right:auto">Supprimer le bénéficiaire</button>`:""}<button class="btn" data-close>Annuler</button><button class="btn primary" id="saveF">Enregistrer</button>`);
   const read=()=>({adultes:Math.max(1,+$("#fa").value||1),enfants:[...m.querySelectorAll(".age")].map(i=>Math.max(0,parseInt(i.value,10)||0)),revenus:f.revenus||0,charges:f.charges||0});
   const upd=()=>{ const t=read(); const r=(t.revenus-t.charges)/(t.adultes+t.enfants.length)/30; const lv=ravLevel(r);
     $("#ravBox").innerHTML=`<span class="light ${lv}" style="width:16px;height:16px"></span><div><div class="eyebrow">Reste à vivre</div><b class="num">${eur(r)}</b> <span class="muted">par personne et par jour</span></div><span class="pill ${lv}" style="margin-left:auto">${ravLabel(r)}</span>`; };
@@ -596,9 +596,9 @@ function foyerModal(id){
   $("#fe").addEventListener("input",drawAges); drawAges();
   ["fa","fe"].forEach(i=>$("#"+i).addEventListener("input",upd)); upd();
   $("#saveF").onclick=()=>{
-    if(!$("#fn").value.trim()){ $("#fn").focus(); toast("Indiquez le nom du foyer."); return; }
+    if(!$("#fn").value.trim()){ $("#fn").focus(); toast("Indiquez le nom du bénéficiaire."); return; }
     Object.assign(f,read(),{prenom:$("#fp").value.trim(),nom:$("#fn").value.trim(),situation:$("#fs").value,qf:$("#fc").value===""?"":Math.max(0,Math.round(+$("#fc").value))});
-    if(!id) S.foyers.push(f); save(); closeModal(); R.foyers(); toast("Foyer enregistré");
+    if(!id) S.foyers.push(f); save(); closeModal(); R.foyers(); toast("Bénéficiaire enregistré");
   };
   const del=$("#delF"); if(del) del.onclick=()=>{
     if(!del.classList.contains("armed")){
@@ -608,7 +608,7 @@ function foyerModal(id){
       m.insertBefore(n, m.querySelector(".mf")); return;
     }
     S.foyers=S.foyers.filter(x=>x.id!==f.id); if(cFoyer===f.id){cFoyer="";cart=[];}
-    save(); closeModal(); R.foyers(); toast(`Foyer ${f.prenom} ${f.nom} supprimé`);
+    save(); closeModal(); R.foyers(); toast(`Bénéficiaire ${f.prenom} ${f.nom} supprimé`);
   };
 }
 
@@ -636,14 +636,14 @@ R.inscriptions=function(){
   });
   $("#addD").onclick=()=>{
     modal("Nouveau dossier",`<div class="form">
-      <label class="full">Nom du foyer<input type="text" id="dn" placeholder="Famille ou personne"></label>
+      <label class="full">Nom du bénéficiaire<input type="text" id="dn" placeholder="Famille ou personne"></label>
       <label>Composition<input type="text" id="dc" placeholder="1 adulte, 2 enfants"></label>
       <label>Priorité<select id="dp"><option value="normale">Normale</option><option value="urgente">Urgente</option></select></label>
       <label>Revenus mensuels (€)<input type="number" id="dr" min="0"></label>
       <label>Charges mensuelles (€)<input type="number" id="dch" min="0"></label>
       <label>Nombre de personnes<input type="number" id="dnp" min="1" value="1"></label></div>`,
       `<button class="btn" data-close>Annuler</button><button class="btn primary" id="saveD">Créer le dossier</button>`);
-    $("#saveD").onclick=()=>{ const n=$("#dn").value.trim(); if(!n){toast("Indiquez le nom du foyer.");return;}
+    $("#saveD").onclick=()=>{ const n=$("#dn").value.trim(); if(!n){toast("Indiquez le nom du bénéficiaire.");return;}
       const r=$("#dr").value?(+$("#dr").value-(+$("#dch").value||0))/Math.max(1,+$("#dnp").value)/30:null;
       S.dossiers.push({id:uid(),nom:n,compo:$("#dc").value||"—",prio:$("#dp").value,etape:"Brouillon",rav:r,pieces:"À compléter",decision:"",motif:"",np:+$("#dnp").value||1,rev:+$("#dr").value||0,ch:+$("#dch").value||0});
       save();closeModal();R.inscriptions();toast("Dossier créé"); };
@@ -661,7 +661,7 @@ function decideModal(id){
     d.decision=dec; d.motif=mo||"Conforme au barème"; d.etape="Décidé";
     if(dec==="Validé"){ const parts=d.nom.replace(/^(M\.|Mme|Famille)\s+/,"").split(" ");
       S.foyers.push({id:uid(),prenom:parts.length>1?parts[0]:"",nom:parts.slice(parts.length>1?1:0).join(" "),adultes:1,enfants:[],situation:"Seul",csp:"",revenus:d.rev||0,charges:d.ch||0,epi:{on:true,fin:addDays(+$("#dm").value),plafond:40},bou:{on:false,fin:"",plafond:0}}); }
-    save();closeModal();R.inscriptions();toast(dec==="Validé"?"Dossier validé, fiche foyer créée":"Décision enregistrée"); };
+    save();closeModal();R.inscriptions();toast(dec==="Validé"?"Dossier validé, fiche bénéficiaire créée":"Décision enregistrée"); };
 }
 
 /* Caisse */
@@ -676,24 +676,24 @@ R.caisse=function(){
   const deja=f?payeMois(f.id):0, plaf=f?f[cMode].plafond:0, reste=plaf-deja;
   const over=f && plaf && tot>reste+1e-9;
   V().innerHTML=`
-  <div class="head"><div><h1>Caisse</h1><p>Identifiez le foyer, scannez ou ajoutez les produits : le prix solidaire et le plafond s'appliquent seuls.</p></div>
+  <div class="head"><div><h1>Caisse</h1><p>Identifiez le bénéficiaire, scannez ou ajoutez les produits : le prix solidaire et le plafond s'appliquent seuls.</p></div>
     <div class="seg" role="group" aria-label="Espace">${[["epi","Épicerie"],["bou","Boutique"]].map(([k,l])=>`<button data-mode="${k}" aria-pressed="${cMode===k}">${l}</button>`).join("")}</div></div>
   <div class="pos">
     <div>
-      <div class="scanbar"><input type="text" id="scan" inputmode="numeric" autocomplete="off" aria-label="Code-barres" placeholder="${f?"Scannez ou tapez un code-barres, puis Entrée":"Choisissez d'abord un foyer pour scanner"}" ${f?"":"disabled"}><button class="btn primary" id="cam" ${f?"":"disabled"}>Scanner avec la caméra</button></div>
+      <div class="scanbar"><input type="text" id="scan" inputmode="numeric" autocomplete="off" aria-label="Code-barres" placeholder="${f?"Scannez ou tapez un code-barres, puis Entrée":"Choisissez d'abord un bénéficiaire pour scanner"}" ${f?"":"disabled"}><button class="btn primary" id="cam" ${f?"":"disabled"}>Scanner avec la caméra</button></div>
       <div class="toolbar"><div class="seg" role="group" aria-label="Catégorie" style="flex-wrap:wrap">${cats.map(c=>`<button data-cat="${esc(c)}" aria-pressed="${c===cCat}">${esc(c)}</button>`).join("")}</div></div>
       <div class="prods">${prods.map(p=>{const q=stockQ(p)-(cart.find(l=>l.pid===p.id)?.q||0);return `<button class="prod" data-p="${p.id}" ${q<=0||!f?"disabled":""}>
         <span class="c">${esc(p.cat)} · ${q} en stock</span><span class="n">${esc(p.nom)}</span>
         <span class="p"><b class="num">${eur(p.sol)}</b><s class="num">${eur(p.off)}</s></span></button>`;}).join("")}</div>
     </div>
     <div class="panel ticket">
-      <label>Foyer<select id="cf"><option value="">— Choisir un foyer —</option>${elig.map(x=>`<option value="${x.id}" ${x.id===cFoyer?"selected":""}>${esc(x.prenom+" "+x.nom)}</option>`).join("")}</select></label>
-      ${f&&!plaf?`<div style="margin-top:10px;font-size:.85rem" class="muted">Sans plafond mensuel · ${eur(deja)} payés ce mois</div>`:f?`<div style="margin-top:10px;font-size:.85rem"><div style="display:flex;justify-content:space-between"><span class="muted">Plafond du mois</span><span class="num">${eur(deja+tot)} / ${eur(plaf)}</span></div><div class="gauge ${over?"over":""}"><i style="width:${Math.min(100,plaf?(deja+tot)/plaf*100:0)}%"></i></div></div>`:`<p class="muted" style="font-size:.85rem">${elig.length?"Sélectionnez un foyer pour commencer.":"Aucun foyer n'a d'accès actif à cet espace."}</p>`}
+      <label>Bénéficiaire<select id="cf"><option value="">— Choisir un bénéficiaire —</option>${elig.map(x=>`<option value="${x.id}" ${x.id===cFoyer?"selected":""}>${esc(x.prenom+" "+x.nom)}</option>`).join("")}</select></label>
+      ${f&&!plaf?`<div style="margin-top:10px;font-size:.85rem" class="muted">Sans plafond mensuel · ${eur(deja)} payés ce mois</div>`:f?`<div style="margin-top:10px;font-size:.85rem"><div style="display:flex;justify-content:space-between"><span class="muted">Plafond du mois</span><span class="num">${eur(deja+tot)} / ${eur(plaf)}</span></div><div class="gauge ${over?"over":""}"><i style="width:${Math.min(100,plaf?(deja+tot)/plaf*100:0)}%"></i></div></div>`:`<p class="muted" style="font-size:.85rem">${elig.length?"Sélectionnez un bénéficiaire pour commencer.":"Aucun bénéficiaire n'a d'accès actif à cet espace."}</p>`}
       <div style="margin-top:12px">${cart.map(l=>`<div class="line"><span>${esc(l.nom)}<div class="muted num" style="font-size:.78rem">${eur(l.sol)} au lieu de ${eur(l.off)}</div></span>
         <span class="qty"><button data-dec="${l.pid}" aria-label="Retirer un">−</button><span class="num">${l.q}</span><button data-inc="${l.pid}" aria-label="Ajouter un">+</button></span><b class="num">${eur(l.q*l.sol)}</b><button class="rm" data-rm="${l.pid}" aria-label="Retirer ${esc(l.nom)} du panier" title="Retirer le produit">×</button></div>`).join("")||`<p class="muted" style="font-size:.85rem">Panier vide.</p>`}${cart.length?`<button class="btn small" id="vider" style="margin-top:8px">Vider le panier</button>`:""}</div>
       <div class="tot"><span class="muted">Valeur marchande</span><span class="num">${eur(val)}</span></div>
       <div class="tot big"><span>À régler</span><b class="num">${eur(tot)}</b></div>
-      ${cart.length?`<div class="saving">Économie solidaire pour le foyer : ${eur(val-tot)}</div>`:""}
+      ${cart.length?`<div class="saving">Économie solidaire pour le bénéficiaire : ${eur(val-tot)}</div>`:""}
       ${over?`<div class="alert bad">Plafond dépassé de ${eur(tot-reste)}. Retirez des articles avant d'encaisser.</div>`:""}
       <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
         <div class="seg" role="group" aria-label="Paiement" style="width:100%">${[["especes","Espèces"],["carte","Carte"],["mixte","Mixte"]].map(([k,l])=>`<button style="flex:1" data-pay="${k}" aria-pressed="${cPay===k}">${l}</button>`).join("")}</div>
@@ -833,7 +833,7 @@ function beep(ok){
 }
 function scanAdd(raw){
   const code=String(raw||"").trim(); if(!code) return null;
-  if(!S.foyers.some(x=>x.id===cFoyer)){ beep(false); toast("Choisissez d'abord un foyer."); return null; }
+  if(!S.foyers.some(x=>x.id===cFoyer)){ beep(false); toast("Choisissez d'abord un bénéficiaire."); return null; }
   const n=normEan(code);
   const p=(n&&S.produits.find(x=>x.ean&&normEan(x.ean)===n))||S.produits.find(x=>x.ref&&String(x.ref).toLowerCase()===code.toLowerCase());
   if(!p){ beep(false); toast(`Code ${code} inconnu dans le stock`); return null; }
@@ -860,7 +860,7 @@ function stopScan(){
 const loadZX=()=>window.ZXing?Promise.resolve():new Promise((res,rej)=>{ const s=document.createElement("script");
   s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
 async function camModal(){
-  if(!S.foyers.some(x=>x.id===cFoyer)){ toast("Choisissez d'abord un foyer."); return; }
+  if(!S.foyers.some(x=>x.id===cFoyer)){ toast("Choisissez d'abord un bénéficiaire."); return; }
   modal("Scanner les produits",`<div class="scanvid" id="svbox"><video id="sv" playsinline muted autoplay></video><div class="aim"></div></div>
     <p id="sst" class="muted" style="margin:10px 0 0;font-size:.88rem;text-align:center">Démarrage de la caméra…</p>
     <div class="scanlast" id="slast"><span class="muted">Visez le code-barres dans le cadre : chaque produit lu s'ajoute au panier.</span></div>
@@ -1209,8 +1209,8 @@ R.rapports=function(){
   <div class="head"><div><h1>Rapports</h1><p>Épicerie solidaire · ${"janvier"} à décembre ${Y()}. Prêt à transmettre à un financeur.</p></div><button class="btn" id="csv">Copier en CSV</button></div>
   <div class="grid g4" style="margin-bottom:16px">
     <div class="panel kpi"><div class="eyebrow">Passages</div><div class="v num">${aP.length}</div>${razBtn("passages")}</div>
-    <div class="panel kpi"><div class="eyebrow">Foyers servis</div><div class="v num">${new Set(aF.map(v=>v.foyer)).size}</div>${razBtn("foyers")}</div>
-    <div class="panel kpi"><div class="eyebrow">Valeur distribuée</div><div class="v num">${eur(vV)}</div><div class="s">${eur(pV)} payés par les foyers</div>${razBtn("valeur")}</div>
+    <div class="panel kpi"><div class="eyebrow">Bénéficiaires servis</div><div class="v num">${new Set(aF.map(v=>v.foyer)).size}</div>${razBtn("foyers")}</div>
+    <div class="panel kpi"><div class="eyebrow">Valeur distribuée</div><div class="v num">${eur(vV)}</div><div class="s">${eur(pV)} payés par les bénéficiaires</div>${razBtn("valeur")}</div>
     <div class="panel kpi"><div class="eyebrow">Panier moyen</div><div class="v num">${eur(aM.length?pM/aM.length:0)}</div><div class="s">valeur ${eur(aM.length?vM/aM.length:0)}</div>${razBtn("panier")}</div>
   </div>
   <div class="panel" style="margin-bottom:16px"><div class="head" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>Évolution mensuelle de janvier à décembre</h2>${yearSel("yR")}<button class="btn small" data-rraz="evo">Remettre à zéro</button></div><div class="legend"><span><i style="background:var(--accent)"></i>Valeur distribuée</span><span><i style="background:var(--mustard)"></i>Montant payé</span></div></div>
@@ -1219,7 +1219,7 @@ R.rapports=function(){
     <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><h2>Répartition par catégorie</h2><button class="btn small" data-rraz="cats">Remettre à zéro</button></div>${cats.map(([c,v])=>`<div class="hbar"><span>${esc(c)}</span><span class="track"><i style="width:${v/cmax*100}%"></i></span><span class="r num" style="text-align:right">${eur(v)}</span></div>`).join("")}</div>
     <div class="panel"><h2 style="margin-bottom:4px">Top 10 des produits distribués</h2><p class="muted" style="font-size:.82rem;margin:0 0 10px">Parmi les produits actuellement en stock.</p><div class="tbl-wrap"><table><thead><tr><th>Rang</th><th>Produit</th><th class="r">Unités distribuées</th><th class="r">En stock</th></tr></thead><tbody>${top.map(([n,q,st],i)=>`<tr><td class="num">${i+1}</td><td>${esc(n)}</td><td class="r num">${q}</td><td class="r num">${st}</td></tr>`).join("")||`<tr><td colspan="4" class="muted">Aucun produit en stock.</td></tr>`}</tbody></table></div></div>
   </div>`;
-  const NOMS={passages:"Passages",foyers:"Foyers servis",valeur:"Valeur distribuée",panier:"Panier moyen",cats:"Répartition par catégorie",evo:"Évolution mensuelle"};
+  const NOMS={passages:"Passages",foyers:"Bénéficiaires servis",valeur:"Valeur distribuée",panier:"Panier moyen",cats:"Répartition par catégorie",evo:"Évolution mensuelle"};
   bindYear("yR",R.rapports);
   V().querySelectorAll("[data-rraz]").forEach(b=>b.onclick=()=>{
     if(!b.classList.contains("armed")){ b.classList.add("danger","armed"); b.textContent="Confirmer"; return; }
