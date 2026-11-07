@@ -326,6 +326,7 @@ function seed(){
   return {v:1,foyers,produits,ventes,dons,dossiers,equipe,planning,conges};
 }
 const KEY="panier-commun-v1";
+const APK_URL="https://github.com/scalus752710-bit/PanierCommun/releases/latest/download/PanierCommun.apk";
 let S; try{ S=JSON.parse(localStorage.getItem(KEY)); }catch(e){ S=null; }
 if(!S||S.v!==1) S=seed();
 const CATS=["Hygiène","Entretien","Fourniture scolaire","Vêtement","Jouet","Autres"];
@@ -388,7 +389,7 @@ async function printLabels(items,filename,btn){
       toast(ok?"PDF enregistré dans Téléchargements":"Le PDF n'a pas pu être enregistré."); }catch(e){ toast("Le PDF n'a pas pu être enregistré."); }
     return; }
   if(!DL){ try{ DL=window.claude&&await window.claude.use("downloads"); }catch(e){} }
-  if(!DL){ modal("Impression indisponible ici",`<p style="margin:0">Cette fenêtre ne permet pas d'enregistrer le PDF des étiquettes. Ouvrez l'application depuis claude.ai ou l'application Claude, puis cliquez de nouveau sur <b>Imprimer</b>.</p>`,`<button class="btn" data-close>Fermer</button>`); return; }
+  if(!DL){ try{ const u=URL.createObjectURL(doc.output("blob")); const a=document.createElement("a"); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); toast("PDF enregistré dans Téléchargements"); }catch(e){ toast("Le PDF n'a pas pu être enregistré."); } return; }
   const blob=doc.output("blob"); const old=btn&&btn.textContent; if(btn){btn.disabled=true;btn.textContent="Préparation…";}
   try{ await DL.save({filename,data:blob}); toast("PDF enregistré : ouvrez-le pour l'imprimer"); }
   catch(err){ toast(err&&err.code==="declined"?"Enregistrement annulé":"Le PDF n'a pas pu être enregistré ici."); }
@@ -498,6 +499,7 @@ R.tableau=function(){
   const comm=S.dossiers.filter(d=>d.etape==="Commission");
   V().innerHTML=`
   <div class="head"><div><div class="eyebrow">${TODAY.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>Tableau de bord</h1><p>Ce qui demande votre attention aujourd'hui.</p></div><span class="sample">Données d'exemple</span></div>
+  ${window.Android?"":`<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px">Application Android</h2><p class="muted" style="margin:0;font-size:.85rem">Installez Panier Commun sur un téléphone Android. Les données de chaque appareil restent séparées.</p></div><a class="btn primary" href="${APK_URL}" download style="text-decoration:none">Télécharger l'APK</a></div>`}
   <div class="grid g4" style="margin-bottom:16px">
     <div class="panel kpi"><div class="eyebrow">Foyers actifs</div><div class="v num">${actifs}</div><div class="s">${S.foyers.reduce((a,f)=>a+nbPers(f),0)} personnes suivies</div></div>
     <div class="panel kpi"><div class="eyebrow">Passages du jour</div><div class="v num">${vj.length}</div><div class="s">${eur(vj.reduce((a,v)=>a+v.paye,0))} encaissés</div><button class="btn small" data-raz="jour" style="margin-top:10px">Remettre à zéro</button></div>
