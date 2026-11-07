@@ -70,6 +70,12 @@ nav a[aria-current="page"] .dot{opacity:1}
 .pin-pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin-top:6px}
 .pin-pad button{height:72px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.5rem;font-weight:700;font-family:var(--f-body)}
 .pin-pad button:active{background:var(--accent-soft)}
+.fact-filters{display:flex;flex-wrap:wrap;gap:12px}.fact-filters label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;font-weight:700;color:var(--muted);flex:1 1 150px}
+.fact-filters select,.fact-filters input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-weight:400}
+.day-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px}.day-head p{margin:2px 0 0;font-size:.85rem}
+.receipt-tk{max-width:360px;margin:0 auto;font-size:.92rem}.tk-h{text-align:center;margin:0 0 10px}
+.tk-meta,.tk-tot{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;padding:10px 0;border-top:1px dashed var(--line)}.tk-meta dt,.tk-tot dt{color:var(--muted)}.tk-meta dd,.tk-tot dd{margin:0;text-align:right}
+.tk-lines{width:100%;border-collapse:collapse;border-top:1px dashed var(--line)}.tk-lines td{padding:6px 0;vertical-align:top;border:0}.tk-lines .r{text-align:right}
 .lockbtn::before{content:"🔒 "}.lockbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:700;font-size:.85rem;white-space:nowrap;flex-shrink:0}
 .acc-tbl th.c,.acc-tbl td.c{text-align:center}.acc-tbl input{width:18px;height:18px}
 .side .who{margin-top:auto;font-size:.82rem;color:var(--muted);padding:10px;border-top:1px solid var(--line)}
@@ -396,6 +402,9 @@ async function printLabels(items,filename,btn){
     doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(90);
     doc.text("au lieu de "+T(eur(p.off)),x+4+pw+1.5,y+H-3.6);
   });
+  return savePdf(doc,filename,btn);
+}
+async function savePdf(doc,filename,btn){
   if(window.Android&&window.Android.saveFile){
     try{ const b64=doc.output("datauristring").split(",")[1]; const ok=window.Android.saveFile(b64,filename,"application/pdf");
       toast(ok?"PDF enregistré dans Téléchargements":"Le PDF n'a pas pu être enregistré."); }catch(e){ toast("Le PDF n'a pas pu être enregistré."); }
@@ -442,7 +451,7 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
 /* ---------- Navigation ---------- */
 const VIEWS=[
-  ["tableau","Tableau de bord"],["foyers","Gestion Bénéficiaires"],["caisse","Caisse"],
+  ["tableau","Tableau de bord"],["foyers","Gestion Bénéficiaires"],["caisse","Caisse"],["facturation","Facturation"],
   ["stock","Gestion des Stocks"],["equipe","Équipe"],["rapports","Rapports"]
 ];
 function renderNav(cur){
@@ -709,10 +718,95 @@ R.caisse=function(){
     cart.forEach(l=>{const p=S.produits.find(x=>x.id===l.pid);let q=l.q;
       p.lots.sort((a,b)=>(a.dlc||"9999").localeCompare(b.dlc||"9999")).forEach(lot=>{const t=Math.min(lot.q,q);lot.q-=t;q-=t;});
       p.lots=p.lots.filter(x=>x.q>0);});
-    S.ventes.push({id:uid(),date:iso(TODAY),foyer:cFoyer,lignes:cart.map(l=>({...l})),paye:tot,valeur:val,caisse:whoName(),paiement:cPay});
+    S.ventes.push({id:uid(),date:iso(TODAY),foyer:cFoyer,lignes:cart.map(l=>({...l})),paye:tot,valeur:val,caisse:whoName(),paiement:cPay,heure:new Date().toTimeString().slice(0,5)});
     save(); const n=nomF(cFoyer); cart=[]; R.caisse(); toast(`Vente encaissée pour ${n} : ${eur(tot)}`);
   };
 };
+
+/* ---------- Facturation : tickets de caisse classés par jour ---------- */
+const PAY={especes:"Espèces",carte:"Carte",mixte:"Mixte"};
+const payL=v=>PAY[v.paiement]||"—";
+const ticketNo=v=>{ const same=S.ventes.filter(x=>x.date===v.date); return "T"+v.date.replace(/-/g,"")+"-"+String(same.indexOf(v)+1).padStart(3,"0"); };
+const nbArt=v=>v.lignes.reduce((a,l)=>a+l.q,0);
+const jourL=d=>cap(new Date(d+"T00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"}));
+const moisL=k=>cap(new Date(k+"-01T00:00").toLocaleDateString("fr-FR",{month:"long",year:"numeric"}));
+const ASSO=()=>{ const b=$(".brand small"); return b?b.textContent.trim():""; };
+let fMois=null, fPay="tous", fQ="";
+R.facturation=function(){
+  const mois=[...new Set([thisMonth,...S.ventes.map(v=>monthKey(v.date))])].sort().reverse();
+  if(!fMois||!mois.includes(fMois)) fMois=mois[0];
+  const q=fQ.trim().toLowerCase();
+  const list=S.ventes.filter(v=>monthKey(v.date)===fMois&&(fPay==="tous"||(v.paiement||"")===fPay)&&(!q||(ticketNo(v)+" "+nomF(v.foyer)+" "+(v.caisse||"")).toLowerCase().includes(q)));
+  const days={}; list.forEach(v=>(days[v.date]=days[v.date]||[]).push(v));
+  const keys=Object.keys(days).sort().reverse();
+  const sum=(a,f)=>a.reduce((s,v)=>s+f(v),0);
+  const tot=sum(list,v=>v.paye);
+  V().innerHTML=`
+  <div class="head"><div><h1>Facturation</h1><p>Tous les tickets de caisse, classés par jour.</p></div></div>
+  <div class="panel fact-filters" style="margin-bottom:16px">
+    <label>Mois<select id="fM">${mois.map(k=>`<option value="${k}" ${k===fMois?"selected":""}>${moisL(k)}</option>`).join("")}</select></label>
+    <label>Paiement<select id="fP">${[["tous","Tous"],...Object.entries(PAY)].map(([k,l])=>`<option value="${k}" ${k===fPay?"selected":""}>${l}</option>`).join("")}</select></label>
+    <label style="flex:2 1 200px">Rechercher<input type="search" id="fQ" value="${esc(fQ)}" placeholder="N° de ticket, foyer ou caissier"></label>
+  </div>
+  <div class="grid g4" style="margin-bottom:16px">
+    <div class="panel kpi"><div class="eyebrow">Tickets</div><div class="v num">${list.length}</div><div class="s">${keys.length} jour${keys.length>1?"s":""} d'ouverture</div></div>
+    <div class="panel kpi"><div class="eyebrow">Total encaissé</div><div class="v num">${eur(tot)}</div><div class="s">Valeur distribuée : ${eur(sum(list,v=>v.valeur))}</div></div>
+    <div class="panel kpi"><div class="eyebrow">Espèces</div><div class="v num">${eur(sum(list.filter(v=>v.paiement==="especes"),v=>v.paye))}</div><div class="s">Mixte : ${eur(sum(list.filter(v=>v.paiement==="mixte"),v=>v.paye))}</div></div>
+    <div class="panel kpi"><div class="eyebrow">Carte</div><div class="v num">${eur(sum(list.filter(v=>v.paiement==="carte"),v=>v.paye))}</div><div class="s">Non précisé : ${eur(sum(list.filter(v=>!PAY[v.paiement]),v=>v.paye))}</div></div>
+  </div>
+  ${keys.map(d=>{ const vs=days[d].slice().reverse(); return `<div class="panel" style="margin-bottom:16px">
+    <div class="day-head"><div><h2>${jourL(d)}</h2><p class="muted">${vs.length} ticket${vs.length>1?"s":""} · ${eur(sum(vs,v=>v.paye))} encaissés</p></div><button class="btn small" data-jpdf="${d}">Journal du jour (PDF)</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>N° de ticket</th><th>Heure</th><th>Foyer</th><th>Caissier</th><th>Paiement</th><th class="r">Articles</th><th class="r">Montant</th></tr></thead><tbody>
+    ${vs.map(v=>`<tr class="click" data-tk="${v.id}" title="Voir le ticket"><td class="num" style="white-space:nowrap"><b>${ticketNo(v)}</b></td><td class="num">${esc(v.heure||"—")}</td><td>${esc(nomF(v.foyer))}</td><td>${esc(v.caisse||"—")}</td><td>${payL(v)}</td><td class="r num">${nbArt(v)}</td><td class="r num"><b>${eur(v.paye)}</b></td></tr>`).join("")}
+    </tbody></table></div></div>`; }).join("")||`<div class="panel"><p class="muted" style="margin:0">Aucun ticket pour ce mois${q||fPay!=="tous"?" avec ces filtres":""}.</p></div>`}`;
+  $("#fM").onchange=e=>{ fMois=e.target.value; R.facturation(); };
+  $("#fP").onchange=e=>{ fPay=e.target.value; R.facturation(); };
+  $("#fQ").oninput=e=>{ fQ=e.target.value; const pos=e.target.selectionStart; R.facturation(); const n=$("#fQ"); n.focus(); try{ n.setSelectionRange(pos,pos); }catch(_){} };
+  V().querySelectorAll("[data-tk]").forEach(r=>r.onclick=()=>ticketModal(S.ventes.find(v=>v.id===r.dataset.tk)));
+  V().querySelectorAll("[data-jpdf]").forEach(b=>b.onclick=()=>journalPdf(b.dataset.jpdf,days[b.dataset.jpdf].slice(),b));
+};
+function ticketModal(v){
+  if(!v) return;
+  const m=modal("Ticket "+ticketNo(v),`<div class="receipt-tk">
+    <p class="tk-h"><b>Panier Commun</b>${ASSO()?`<br>${esc(ASSO())}`:""}</p>
+    <dl class="tk-meta"><dt>Ticket</dt><dd class="num">${ticketNo(v)}</dd><dt>Date</dt><dd>${fmtD(v.date)}${v.heure?" à "+esc(v.heure):""}</dd><dt>Foyer</dt><dd>${esc(nomF(v.foyer))}</dd><dt>Servi par</dt><dd>${esc(v.caisse||"—")}</dd><dt>Paiement</dt><dd>${payL(v)}</dd></dl>
+    <table class="tk-lines"><tbody>${v.lignes.map(l=>`<tr><td>${esc(l.nom)}<br><span class="muted num">${l.q} × ${eur(l.sol)}</span></td><td class="r num">${eur(l.q*l.sol)}</td></tr>`).join("")}</tbody></table>
+    <dl class="tk-tot"><dt>Total payé</dt><dd class="num"><b>${eur(v.paye)}</b></dd><dt>Valeur en magasin</dt><dd class="num">${eur(v.valeur)}</dd><dt>Économie du foyer</dt><dd class="num">${eur(v.valeur-v.paye)}</dd></dl>
+  </div>`,`<button class="btn" data-close>Fermer</button><button class="btn primary" id="tkPdf">Ticket (PDF)</button>`);
+  m.querySelector("#tkPdf").onclick=e=>ticketPdf(v,e.currentTarget);
+}
+const pdfT=x=>String(x??"").replace(/[  ]/g," ");
+function ticketPdf(v,btn){
+  if(!window.jspdf){ toast("Le module PDF n'a pas pu se charger. Vérifiez internet et rechargez la page."); return; }
+  const {jsPDF}=window.jspdf; const H=78+v.lignes.length*9; const doc=new jsPDF({unit:"mm",format:[80,H]});
+  let y=10; const c=(t,sz,b)=>{ doc.setFont("helvetica",b?"bold":"normal"); doc.setFontSize(sz); doc.text(pdfT(t),40,y,{align:"center"}); };
+  c("Panier Commun",13,true); y+=5; if(ASSO()){ c(ASSO(),8); y+=5; }
+  doc.setLineDashPattern([1,1],0); doc.line(5,y,75,y); y+=5;
+  const kv=(k,val,b)=>{ doc.setFont("helvetica",b?"bold":"normal"); doc.setFontSize(b?10:8.5); doc.text(pdfT(k),5,y); doc.text(pdfT(val),75,y,{align:"right"}); y+=b?5.5:4.5; };
+  kv("Ticket",ticketNo(v)); kv("Date",fmtD(v.date)+(v.heure?" à "+v.heure:"")); kv("Foyer",nomF(v.foyer)); kv("Servi par",v.caisse||"—"); kv("Paiement",payL(v));
+  doc.line(5,y-1,75,y-1); y+=4;
+  v.lignes.forEach(l=>{ doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(pdfT(l.nom),52)[0],5,y); doc.text(pdfT(eur(l.q*l.sol)),75,y,{align:"right"}); y+=3.8; doc.setFontSize(7.5); doc.setTextColor(110); doc.text(pdfT(`${l.q} × ${eur(l.sol)}`),5,y); doc.setTextColor(0); y+=5.2; });
+  doc.line(5,y-1,75,y-1); y+=4;
+  kv("Total payé",eur(v.paye),true); kv("Valeur en magasin",eur(v.valeur)); kv("Économie du foyer",eur(v.valeur-v.paye));
+  y+=3; c("Merci et à bientôt !",8);
+  return savePdf(doc,`Ticket-${ticketNo(v)}.pdf`,btn);
+}
+function journalPdf(d,vs,btn){
+  if(!window.jspdf){ toast("Le module PDF n'a pas pu se charger. Vérifiez internet et rechargez la page."); return; }
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"mm",format:"a4"});
+  const cols=[[14,"N° de ticket"],[46,"Heure"],[60,"Foyer"],[105,"Caissier"],[138,"Paiement"],[170,"Art.",1],[196,"Montant",1]];
+  let y=18; const head=()=>{ doc.setFont("helvetica","bold"); doc.setFontSize(9); cols.forEach(([x,t,r])=>doc.text(t,x,y,r?{align:"right"}:undefined)); y+=2; doc.line(14,y,196,y); y+=5; };
+  doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text(pdfT("Journal de caisse — "+jourL(d)),14,y); y+=6;
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text(pdfT("Panier Commun"+(ASSO()?" · "+ASSO():"")),14,y); doc.setTextColor(0); y+=9; head();
+  doc.setFont("helvetica","normal"); doc.setFontSize(9);
+  vs.forEach(v=>{ if(y>280){ doc.addPage(); y=18; head(); doc.setFont("helvetica","normal"); }
+    const row=[ticketNo(v),v.heure||"—",doc.splitTextToSize(pdfT(nomF(v.foyer)),43)[0],doc.splitTextToSize(pdfT(v.caisse||"—"),31)[0],payL(v),String(nbArt(v)),eur(v.paye)];
+    cols.forEach(([x,,r],i)=>doc.text(pdfT(row[i]),x,y,r?{align:"right"}:undefined)); y+=6; });
+  const s=(f)=>vs.filter(f).reduce((a,v)=>a+v.paye,0);
+  y+=2; doc.line(14,y,196,y); y+=6; doc.setFont("helvetica","bold"); doc.setFontSize(10);
+  [["Tickets",String(vs.length)],["Espèces",eur(s(v=>v.paiement==="especes"))],["Carte",eur(s(v=>v.paiement==="carte"))],["Mixte",eur(s(v=>v.paiement==="mixte"))],["Non précisé",eur(s(v=>!PAY[v.paiement]))],["Total encaissé",eur(s(()=>true))]].forEach(([k,val])=>{ doc.text(pdfT(k),140,y); doc.text(pdfT(val),196,y,{align:"right"}); y+=6; });
+  return savePdf(doc,`Journal-caisse-${d}.pdf`,btn);
+}
 
 /* Scan des codes-barres en caisse */
 const normEan=c=>String(c||"").replace(/\D/g,"").replace(/^0+/,"");
@@ -1169,7 +1263,7 @@ function syncInit(){
 
 /* ---------- Accès par code PIN ---------- */
 const ROLES=["Coordinatrice","Directrice","Animatrice","Facturation"];
-const ACC_DEF={"Coordinatrice":VIEWS.map(v=>v[0]),"Directrice":VIEWS.map(v=>v[0]),"Animatrice":["tableau","foyers","caisse"],"Facturation":["tableau","caisse","rapports"]};
+const ACC_DEF={"Coordinatrice":VIEWS.map(v=>v[0]),"Directrice":VIEWS.map(v=>v[0]),"Animatrice":["tableau","foyers","caisse"],"Facturation":["tableau","caisse","facturation","rapports"]};
 const WHO_KEY=KEY+"-qui", LOCK_MIN=10;
 const isAdmin=e=>!!e&&/^coordinat/i.test(String(e.role||"").trim());
 const pinHash=(id,pin)=>hashOf("pin|"+id+"|"+pin);
