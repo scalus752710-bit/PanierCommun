@@ -76,6 +76,7 @@ nav a[aria-current="page"] .dot{opacity:1}
 .receipt-tk{max-width:360px;margin:0 auto;font-size:.92rem}.tk-h{text-align:center;margin:0 0 10px}
 .tk-meta,.tk-tot{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;padding:10px 0;border-top:1px dashed var(--line)}.tk-meta dt,.tk-tot dt{color:var(--muted)}.tk-meta dd,.tk-tot dd{margin:0;text-align:right}
 .tk-lines{width:100%;border-collapse:collapse;border-top:1px dashed var(--line)}.tk-lines td{padding:6px 0;vertical-align:top;border:0}.tk-lines .r{text-align:right}
+.rscan{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px dashed var(--accent);border-radius:8px;background:var(--accent-soft)}.rscan .scanbar{margin:0}.rscan .scanvid{margin-top:4px}
 .lockbtn::before{content:"🔒 "}.lockbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:700;font-size:.85rem;white-space:nowrap;flex-shrink:0}
 .acc-tbl th.c,.acc-tbl td.c{text-align:center}.acc-tbl input{width:18px;height:18px}
 .side .who{margin-top:auto;font-size:.82rem;color:var(--muted);padding:10px;border-top:1px solid var(--line)}
@@ -873,10 +874,13 @@ async function camModal(){
     const p=scanAdd(code); recap(p); if(box){ box.classList.add("flash"); setTimeout(()=>box&&box.classList.remove("flash"),300); } };
   const manual=()=>{ const i=$("#scan2"); const v=i.value; i.value=""; if(v.trim()) recap(scanAdd(v)); i.focus(); };
   $("#scan2ok").onclick=manual; $("#scan2").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); manual(); } };
+  await runScan(vid,st,box,hit);
+}
+async function runScan(vid,st,box,hit){
   const fail=err=>{ stopScan(); if(!st) return; const n=err&&err.name;
-    st.innerHTML=n==="NotAllowedError"||n==="SecurityError"?"L'accès à la caméra est refusé. Autorisez la caméra pour cette page dans le navigateur, ou tapez le code ci-dessous."
-      :n==="NotFoundError"?"Aucune caméra trouvée sur cet appareil. Utilisez une douchette ou tapez le code ci-dessous."
-      :"La caméra n'est pas accessible ici. Utilisez une douchette ou tapez le code ci-dessous."; if(box) box.hidden=true; };
+    st.innerHTML=n==="NotAllowedError"||n==="SecurityError"?"L'accès à la caméra est refusé. Autorisez la caméra pour cette page dans le navigateur, ou tapez le code à la main."
+      :n==="NotFoundError"?"Aucune caméra trouvée sur cet appareil. Utilisez une douchette ou tapez le code à la main."
+      :"La caméra n'est pas accessible ici. Utilisez une douchette ou tapez le code à la main."; if(box) box.hidden=true; };
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ fail(); return; }
   const cons={video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false};
   scanOn=true;
@@ -899,6 +903,21 @@ async function camModal(){
       await zxReader.decodeFromConstraints(cons,vid,(res)=>{ if(res&&scanOn) hit(res.getText()); });
     }
   }catch(err){ fail(err); }
+}
+
+/* Recherche d'une fiche produit en ligne à partir du code-barres (Open Food Facts et bases sœurs) */
+async function lookupEan(ean){
+  const bases=[["https://world.openfoodfacts.org","food"],["https://world.openbeautyfacts.org","beauty"],["https://world.openproductsfacts.org","products"]];
+  const one=async([u,k])=>{ const c=new AbortController(); const t=setTimeout(()=>c.abort(),6000);
+    try{ const r=await fetch(`${u}/api/v2/product/${ean}.json?fields=product_name_fr,product_name,generic_name_fr,brands,categories_tags,quantity`,{signal:c.signal}); if(!r.ok) return null; const j=await r.json(); return j&&j.status===1&&j.product?{p:j.product,k}:null; }
+    catch(e){ return null; } finally{ clearTimeout(t); } };
+  const res=(await Promise.all(bases.map(one))).filter(Boolean); if(!res.length) return null;
+  const {p,k}=res.find(r=>r.p.product_name_fr||r.p.product_name)||res[0];
+  let nom=String(p.product_name_fr||p.product_name||p.generic_name_fr||"").trim(); const qte=String(p.quantity||"").trim();
+  if(nom&&qte&&!nom.toLowerCase().includes(qte.toLowerCase())) nom+=" "+qte;
+  const tags=(p.categories_tags||[]).join(" ");
+  const cat=k==="beauty"||/diaper|couche|hygien|toothpaste|shampoo|soap|shower|deodorant/i.test(tags)?"Hygiène":/clean|detergent|lessive|dishwash|household|entretien/i.test(tags)?"Entretien":/school|stationery|scolaire/i.test(tags)?"Fourniture scolaire":/cloth|vetement|textile/i.test(tags)?"Vêtement":/toy|jouet/i.test(tags)?"Jouet":"Autres";
+  return {nom,marque:String(p.brands||"").split(",")[0].trim(),cat};
 }
 
 /* Stock */
@@ -969,6 +988,10 @@ R.stock=function(){
     $("#okd").onclick=()=>{l.dlc=$("#nd").value;save();closeModal();R.stock();toast("Date enregistrée");};});
   const openRecep=(isNew)=>{
     modal(isNew?"Nouveau produit":"Nouvelle réception",`<div class="form">
+      <div class="full rscan"><span style="font-size:.82rem;font-weight:700;color:var(--muted)">Scanner le produit</span>
+        <div class="scanbar"><input type="text" id="rsc" inputmode="numeric" autocomplete="off" placeholder="Scannez ou tapez le code-barres, puis Entrée" aria-label="Code-barres à scanner"><button type="button" class="btn primary" id="rcam">Caméra</button></div>
+        <div class="scanvid" id="rsvbox" hidden><video id="rsv" playsinline muted autoplay></video><div class="aim"></div></div>
+        <p id="rsst" class="muted" style="margin:0;font-size:.85rem" aria-live="polite"></p></div>
       <label class="full">Produit<select id="rp">${S.produits.map(p=>`<option value="${p.id}">${esc(p.nom)}</option>`).join("")}<option value="__new">+ Nouveau produit…</option></select></label>
       <div class="full" style="border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px">
         <div class="eyebrow" id="rph">Fiche du produit</div>
@@ -979,7 +1002,7 @@ R.stock=function(){
         <label>Prix officiel (€)<input type="number" step="0.01" min="0" id="rno"></label><label>Prix de vente solidaire (€)<input type="number" step="0.01" min="0" id="rns"></label></div>
         <p class="muted" id="rpn" style="font-size:.8rem;margin:0"></p></div>
       <input type="hidden" id="rl"><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:.82rem;font-weight:700;color:var(--muted)">Date limite</span><div class="seg" role="group" aria-label="Date limite" style="width:100%"><button type="button" style="flex:1" data-dl="none" aria-pressed="false">Pas de date limite</button><button type="button" style="flex:1" data-dl="date" aria-pressed="true">Choisir une date</button></div><input type="date" id="rd" aria-label="Date limite" min="${iso(TODAY)}"></div>
-      <label>Quantité reçue<input type="number" min="0" id="rq" value="10"></label><label hidden><select id="re">${["Réserve","Frigo 1","Frigo 2","Rayon B","Rayon C","Étal"].map(e=>`<option>${e}</option>`).join("")}</select></label></div>`,
+      <label>Quantité reçue<input type="number" min="0" id="rq" inputmode="numeric" placeholder="À saisir"></label><label hidden><select id="re">${["Réserve","Frigo 1","Frigo 2","Rayon B","Rayon C","Étal"].map(e=>`<option>${e}</option>`).join("")}</select></label></div>`,
       `<button class="btn" data-close>Annuler</button><button class="btn primary" id="okr">Enregistrer la réception</button>`);
     const fill=()=>{ const id=$("#rp").value, p=S.produits.find(x=>x.id===id);
       $("#rnn").value=p?p.nom:""; $("#rnc").value=p&&CATS.includes(p.cat)?p.cat:"Autres"; $("#rno").value=p?p.off:""; $("#rns").value=p?p.sol:""; $("#rnr").value=p?(p.ref||""):nextRef(); $("#rne").value=p?(p.ean||genEan()):genEan(); $("#rnm").value=p?(p.marque||""):""; $("#rna").value=p&&p.achat!=null?p.achat:"";
@@ -989,7 +1012,32 @@ R.stock=function(){
     let dlMode="date"; const setDl=m=>{ dlMode=m; document.querySelectorAll("[data-dl]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.dl===m)); $("#rd").hidden=m==="none"; if(m==="date") $("#rd").focus(); };
     document.querySelectorAll("[data-dl]").forEach(b=>b.onclick=()=>setDl(b.dataset.dl));
     $("#rp").onchange=fill; fill();
+    const rst=t=>{ const e=$("#rsst"); if(e) e.innerHTML=t; };
+    const afterScan=()=>{ const d=$("#rd"); if(dlMode==="date"&&d&&!d.value) d.focus(); else { const q=$("#rq"); q.focus(); q.select(); } };
+    const fromCode=async raw=>{
+      const code=String(raw||"").replace(/\s/g,""); if(!code) return;
+      const n=normEan(code);
+      const p=(n&&S.produits.find(x=>x.ean&&normEan(x.ean)===n))||S.produits.find(x=>x.ref&&String(x.ref).toLowerCase()===code.toLowerCase());
+      if(p){ if(isNew){ beep(false); rst(`<b>${esc(p.nom)}</b> existe déjà dans le stock. Utilisez « Nouvelle réception » pour en ajouter.`); return; }
+        $("#rp").value=p.id; fill(); beep(true); rst(`<b>${esc(p.nom)}</b> trouvé dans le stock : fiche remplie. Indiquez la quantité reçue.`); afterScan(); return; }
+      if(!/^\d{8}$|^\d{12,14}$/.test(code)){ beep(false); rst(`Code « ${esc(code)} » inconnu et non valide comme code-barres.`); return; }
+      $("#rp").value="__new"; fill(); $("#rne").value=code; beep(true);
+      rst("Nouveau produit : recherche de sa fiche en ligne…");
+      const info=await lookupEan(code);
+      if(!$("#rne")||$("#rne").value!==code) return;
+      if(info){ if(info.nom) $("#rnn").value=info.nom; if(info.marque) $("#rnm").value=info.marque; $("#rnc").value=info.cat;
+        rst(`Nouveau produit trouvé en ligne : <b>${esc(info.nom||code)}</b>. Vérifiez la fiche, ajoutez les prix et la quantité.`); }
+      else rst("Nouveau produit : aucune fiche trouvée en ligne. Complétez le nom et les prix.");
+      if(info&&info.nom) afterScan(); else $("#rnn").focus();
+    };
+    const rsc=$("#rsc"); rsc.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); const v=rsc.value; rsc.value=""; fromCode(v); } };
+    setTimeout(()=>{ const r=$("#rsc"); if(r) r.focus(); },60);
+    $("#rcam").onclick=async()=>{ const box=$("#rsvbox"), b=$("#rcam");
+      if(!box.hidden){ stopScan(); box.hidden=true; b.textContent="Caméra"; rst(""); return; }
+      box.hidden=false; b.textContent="Arrêter"; rst("Démarrage de la caméra…");
+      await runScan($("#rsv"),$("#rsst"),box,code=>{ stopScan(); box.hidden=true; b.textContent="Caméra"; fromCode(code); }); };
     $("#okr").onclick=()=>{ const nom=$("#rnn").value.trim(); if(!nom){toast("Indiquez le nom du produit.");$("#rnn").focus();return;}
+      if(!isNew&&$("#rq").value.trim()===""){toast("Indiquez la quantité reçue.");$("#rq").focus();return;}
       if(dlMode==="date"&&!$("#rd").value&&(parseInt($("#rq").value,10)||0)>0){toast("Choisissez une date limite ou « Pas de date limite ».");$("#rd").focus();return;}
       const ean=$("#rne").value.replace(/\s/g,"")||genEan(); if(ean&&!/^\d{8}$|^\d{12,14}$/.test(ean)){toast("Le code-barres doit contenir 8 ou 13 chiffres.");$("#rne").focus();return;}
       const info={nom,cat:$("#rnc").value.trim()||"Divers",off:Math.max(0,+$("#rno").value||0),sol:Math.max(0,+$("#rns").value||0),ref:$("#rnr").value.trim()||nextRef(),ean,marque:$("#rnm").value.trim(),achat:$("#rna").value===""?"":Math.max(0,+$("#rna").value)};
