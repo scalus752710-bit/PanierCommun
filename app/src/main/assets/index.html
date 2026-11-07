@@ -762,7 +762,7 @@ R.facturation=function(){
   const kT=kl("tickets"), kM=kl("total"), kE=kl("especes"), kC=kl("carte"), kQ=kl("cheque");
   const rz=k=>`<button class="btn small" data-frz="${k}" style="margin-top:10px">Remettre à zéro</button>`;
   V().innerHTML=`
-  <div class="head"><div><h1>Facturation</h1><p>Tous les tickets de caisse, classés par jour.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${hidM.length?`<button class="btn small" id="fRest">Rétablir les journées effacées (${new Set(hidM.map(v=>v.date)).size})</button>`:""}${keys.length?`<button class="btn small danger" id="fDelAll">Effacer toutes les journées du mois</button>`:""}</div></div>
+  <div class="head"><div><h1>Facturation</h1><p>Tous les tickets de caisse, classés par jour.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${hidM.length&&canRestore()?`<button class="btn small" id="fRest">Rétablir les journées effacées (${new Set(hidM.map(v=>v.date)).size})</button>`:""}${keys.length?`<button class="btn small danger" id="fDelAll">Effacer toutes les journées du mois</button>`:""}</div></div>
   <div class="panel fact-filters" style="margin-bottom:16px">
     <label>Mois<select id="fM">${mois.map(k=>`<option value="${k}" ${k===fMois?"selected":""}>${moisL(k)}</option>`).join("")}</select></label>
     <label>Paiement<select id="fP">${[["tous","Tous"],...Object.entries(PAY)].map(([k,l])=>`<option value="${k}" ${k===fPay?"selected":""}>${l}</option>`).join("")}</select></label>
@@ -792,7 +792,7 @@ R.facturation=function(){
   const hide=ids=>{ S.raz.factHide=[...new Set([...(S.raz.factHide||[]),...ids])]; save(); R.facturation(); };
   V().querySelectorAll("[data-jdel]").forEach(b=>b.onclick=()=>{ if(!arm(b,"Confirmer l'effacement")) return; hide(days[b.dataset.jdel].map(v=>v.id)); toast("Journée du "+fmtD(b.dataset.jdel)+" effacée"); });
   const da=$("#fDelAll"); if(da) da.onclick=()=>{ if(!arm(da,`Confirmer : effacer ${keys.length} journée${keys.length>1?"s":""}`)) return; hide(S.ventes.filter(v=>monthKey(v.date)===fMois).map(v=>v.id)); toast("Journées du mois effacées"); };
-  const fr=$("#fRest"); if(fr) fr.onclick=()=>{ const ids=new Set(hidM.map(v=>v.id)); S.raz.factHide=(S.raz.factHide||[]).filter(i=>!ids.has(i)); save(); R.facturation(); toast("Journées rétablies"); };
+  const fr=$("#fRest"); if(fr) fr.onclick=()=>{ if(!canRestore()) return; const ids=new Set(hidM.map(v=>v.id)); S.raz.factHide=(S.raz.factHide||[]).filter(i=>!ids.has(i)); save(); R.facturation(); toast("Journées rétablies"); };
   V().querySelectorAll("[data-jpdf]").forEach(b=>b.onclick=()=>journalPdf(b.dataset.jpdf,days[b.dataset.jpdf].slice(),b));
 };
 function ticketModal(v){
@@ -1362,6 +1362,8 @@ const me=()=>S.equipe.find(e=>e.id===WHO)||null;
 const canSee=k=>!lockOn()||(me()&&accesRole(me().role).includes(k));
 const canAdmin=()=>!lockOn()||isAdmin(me());
 const SANS_RAZ=["Animatrice","Facturation"]; // rôles sans boutons « Remettre à zéro »
+const AVEC_RETABLIR=["Administratrice","Coordinatrice","Directrice"]; // rôles pouvant rétablir les journées effacées
+const canRestore=()=>!lockOn()||(!!me()&&AVEC_RETABLIR.includes(rk(me().role)));
 const canReset=()=>!lockOn()||(!!me()&&!SANS_RAZ.includes(rk(me().role)));
 const whoName=()=>{ const m=me(); return m?m.nom:"—"; };
 const touchWho=()=>{ if(WHO) try{ localStorage.setItem(WHO_KEY,JSON.stringify({id:WHO,t:Date.now()})); }catch(e){} };
