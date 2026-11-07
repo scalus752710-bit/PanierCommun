@@ -7,8 +7,8 @@ android {
         applicationId = "fr.paniercommun.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 28
-        versionName = "1.27"
+        versionCode = 29
+        versionName = "1.28"
     }
     buildTypes {
         release { isMinifyEnabled = false }

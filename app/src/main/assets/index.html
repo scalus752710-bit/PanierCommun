@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <script>try{var t=localStorage.getItem("panier-commun-v1-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
-<title>Panier Commun</title>
+<title>Boutique Solidaire</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
@@ -42,7 +42,7 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
-.side{background:var(--surface);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh}
+.side{background:var(--surface);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto}
 .brand{display:flex;align-items:center;gap:10px;padding:0 6px}
 .brand svg{flex:none}
 .logo-slot{position:relative;flex:none;width:44px;height:44px;border:1px dashed transparent;border-radius:10px;background:none;padding:0;display:grid;place-items:center}
@@ -256,7 +256,7 @@ svg.ean{display:block;height:auto;border-radius:3px}
   <aside class="side">
     <div class="brand">
       <button class="logo-slot" id="logoSlot" title="Ajouter ou changer le logo" aria-label="Logo de l'association"><svg id="logoDefault" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="9" fill="var(--accent)"/><path d="M8 14h18l-2.2 11a2 2 0 0 1-2 1.6H12.2a2 2 0 0 1-2-1.6Z" fill="var(--accent-ink)"/><path d="M12.5 14 15 8.5M21.5 14 19 8.5" stroke="var(--accent-ink)" stroke-width="2" stroke-linecap="round" fill="none"/></svg><img id="logoImg" alt="Logo" hidden><span class="logo-edit" aria-hidden="true">✎</span></button>
-      <div><b>Panier Commun</b><small>Épicerie solidaire</small></div>
+      <div><b>Boutique Solidaire</b><small>Épicerie solidaire</small></div>
     </div>
     <nav id="nav"></nav>
     <div class="logos2"><button class="logo2" id="logo2Slot" title="Ajouter ou changer ce logo"></button><button class="logo2" id="logo3Slot" title="Ajouter ou changer ce logo"></button></div>
@@ -538,7 +538,7 @@ R.tableau=function(){
   const comm=S.dossiers.filter(d=>d.etape==="Commission");
   V().innerHTML=`
   <div class="head"><div><div class="eyebrow">${TODAY.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>Tableau de bord</h1><p>Ce qui demande votre attention aujourd'hui.</p></div></div>
-  ${syncPanel()}${window.Android?"":`<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px">Application Android</h2><p class="muted" style="margin:0;font-size:.85rem">Installez Panier Commun sur un téléphone Android, puis connectez-vous avec votre compte pour retrouver les mêmes données.</p></div><a class="btn primary" href="${APK_URL}" download style="text-decoration:none">Télécharger l'APK</a></div>`}
+  ${syncPanel()}${window.Android?"":`<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:16px"><div style="flex:1 1 220px"><h2 style="margin:0 0 2px">Application Android</h2><p class="muted" style="margin:0;font-size:.85rem">Installez Boutique Solidaire sur un téléphone Android, puis connectez-vous avec votre compte pour retrouver les mêmes données.</p></div><a class="btn primary" href="${APK_URL}" download style="text-decoration:none">Télécharger l'APK</a></div>`}
   <div class="grid g3" style="margin-bottom:16px">
     <div class="panel kpi"><div class="eyebrow">Bénéficiaires actifs</div><div class="v num">${actifs}</div><div class="s">${S.foyers.reduce((a,f)=>a+nbPers(f),0)} personnes suivies</div></div>
     <div class="panel kpi"><div class="eyebrow">Passages du jour</div><div class="v num">${vj.length}</div><div class="s">${eur(vj.reduce((a,v)=>a+v.paye,0))} encaissés</div><button class="btn small" data-raz="jour" style="margin-top:10px">Remettre à zéro</button></div>
@@ -798,7 +798,7 @@ R.facturation=function(){
 function ticketModal(v){
   if(!v) return;
   const m=modal("Ticket "+ticketNo(v),`<div class="receipt-tk">
-    <p class="tk-h"><b>Panier Commun</b>${ASSO()?`<br>${esc(ASSO())}`:""}</p>
+    <p class="tk-h"><b>Boutique Solidaire</b>${ASSO()?`<br>${esc(ASSO())}`:""}</p>
     <dl class="tk-meta"><dt>Ticket</dt><dd class="num">${ticketNo(v)}</dd><dt>Date</dt><dd>${fmtD(v.date)}${v.heure?" à "+esc(v.heure):""}</dd><dt>Bénéficiaire</dt><dd>${esc(nomF(v.foyer))}</dd><dt>Servi par</dt><dd>${esc(v.caisse||"—")}</dd><dt>Paiement</dt><dd>${payL(v)}</dd></dl>
     <table class="tk-lines"><tbody>${v.lignes.map(l=>`<tr><td>${esc(l.nom)}<br><span class="muted num">${l.q} × ${eur(l.sol)}</span></td><td class="r num">${eur(l.q*l.sol)}</td></tr>`).join("")}</tbody></table>
     <dl class="tk-tot"><dt>Total payé</dt><dd class="num"><b>${eur(v.paye)}</b></dd><dt>Valeur en magasin</dt><dd class="num">${eur(v.valeur)}</dd><dt>Économie du bénéficiaire</dt><dd class="num">${eur(v.valeur-v.paye)}</dd></dl>
@@ -810,7 +810,7 @@ function ticketPdf(v,btn){
   if(!window.jspdf){ toast("Le module PDF n'a pas pu se charger. Vérifiez internet et rechargez la page."); return; }
   const {jsPDF}=window.jspdf; const H=78+v.lignes.length*9; const doc=new jsPDF({unit:"mm",format:[80,H]});
   let y=10; const c=(t,sz,b)=>{ doc.setFont("helvetica",b?"bold":"normal"); doc.setFontSize(sz); doc.text(pdfT(t),40,y,{align:"center"}); };
-  c("Panier Commun",13,true); y+=5; if(ASSO()){ c(ASSO(),8); y+=5; }
+  c("Boutique Solidaire",13,true); y+=5; if(ASSO()){ c(ASSO(),8); y+=5; }
   doc.setLineDashPattern([1,1],0); doc.line(5,y,75,y); y+=5;
   const kv=(k,val,b)=>{ doc.setFont("helvetica",b?"bold":"normal"); doc.setFontSize(b?10:8.5); doc.text(pdfT(k),5,y); doc.text(pdfT(val),75,y,{align:"right"}); y+=b?5.5:4.5; };
   kv("Ticket",ticketNo(v)); kv("Date",fmtD(v.date)+(v.heure?" à "+v.heure:"")); kv("Bénéficiaire",nomF(v.foyer)); kv("Servi par",v.caisse||"—"); kv("Paiement",payL(v));
@@ -827,7 +827,7 @@ function journalPdf(d,vs,btn){
   const cols=[[14,"N° de ticket"],[46,"Heure"],[60,"Bénéficiaire"],[105,"Caissier"],[138,"Paiement"],[170,"Art.",1],[196,"Montant",1]];
   let y=18; const head=()=>{ doc.setFont("helvetica","bold"); doc.setFontSize(9); cols.forEach(([x,t,r])=>doc.text(t,x,y,r?{align:"right"}:undefined)); y+=2; doc.line(14,y,196,y); y+=5; };
   doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text(pdfT("Journal de caisse — "+jourL(d)),14,y); y+=6;
-  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text(pdfT("Panier Commun"+(ASSO()?" · "+ASSO():"")),14,y); doc.setTextColor(0); y+=9; head();
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90); doc.text(pdfT("Boutique Solidaire"+(ASSO()?" · "+ASSO():"")),14,y); doc.setTextColor(0); y+=9; head();
   doc.setFont("helvetica","normal"); doc.setFontSize(9);
   vs.forEach(v=>{ if(y>280){ doc.addPage(); y=18; head(); doc.setFont("helvetica","normal"); }
     const row=[ticketNo(v),v.heure||"—",doc.splitTextToSize(pdfT(nomF(v.foyer)),43)[0],doc.splitTextToSize(pdfT(v.caisse||"—"),31)[0],payL(v),String(nbArt(v)),eur(v.paye)];
@@ -1124,7 +1124,7 @@ R.dons=function(){
 function recuModal(id){
   const d=S.dons.find(x=>x.id===id); const n=String(S.dons.indexOf(d)+1).padStart(4,"0");
   modal("Reçu au titre des dons",`<div class="receipt">
-    <div class="rt"><div><b>Panier Commun</b><div class="muted" style="font-size:.82rem">Épicerie solidaire · association loi 1901<br>Aide alimentaire aux personnes en difficulté</div></div><div style="text-align:right"><b class="num">N° ${TODAY.getFullYear()}-${n}</b><div class="muted" style="font-size:.82rem">Modèle Cerfa n° 11580</div></div></div>
+    <div class="rt"><div><b>Boutique Solidaire</b><div class="muted" style="font-size:.82rem">Épicerie solidaire · association loi 1901<br>Aide alimentaire aux personnes en difficulté</div></div><div style="text-align:right"><b class="num">N° ${TODAY.getFullYear()}-${n}</b><div class="muted" style="font-size:.82rem">Modèle Cerfa n° 11580</div></div></div>
     <dl class="dl"><dt>Donateur</dt><dd>${esc(d.donateur)}</dd><dt>Adresse</dt><dd>${esc(d.adresse||"À compléter")}</dd><dt>Date du don</dt><dd>${fmtD(d.date)}</dd>
     <dt>Montant</dt><dd class="num">${eur(d.montant)}</dd><dt>Forme</dt><dd>${esc(d.canal)}${d.ref?" · "+esc(d.ref):""}</dd><dt>Nature</dt><dd>Numéraire</dd></dl>
     <p class="muted" style="font-size:.82rem;margin:4px 0 0">Le bénéficiaire certifie que ce don ouvre droit à la réduction d'impôt prévue aux articles 200 et 238 bis du CGI. Pour les particuliers, les dons aux organismes d'aide aux personnes en difficulté ouvrent droit à 75 % dans la limite du plafond en vigueur, puis 66 %.</p>
@@ -1380,7 +1380,7 @@ function lockScreen(){
   if($("#lock")) return;
   closeModal(); WHO=null; try{ localStorage.removeItem(WHO_KEY); }catch(e){}
   const d=document.createElement("div"); d.id="lock"; d.setAttribute("role","dialog"); d.setAttribute("aria-modal","true"); d.setAttribute("aria-label","Saisir votre code PIN");
-  d.innerHTML=`<div class="lock-card"><div class="lock-logo">${S.logo?`<img src="${S.logo}" alt="">`:$("#logoDefault").outerHTML.replace('id="logoDefault"',"")}</div><h1>Panier Commun</h1><p class="muted">Entrez votre code à 4 chiffres</p>
+  d.innerHTML=`<div class="lock-card"><div class="lock-logo">${S.logo?`<img src="${S.logo}" alt="">`:$("#logoDefault").outerHTML.replace('id="logoDefault"',"")}</div><h1>Boutique Solidaire</h1><p class="muted">Entrez votre code à 4 chiffres</p>
     <div class="pin-dots" aria-live="polite"><i></i><i></i><i></i><i></i></div><p class="pin-err" id="pinErr"></p>
     <div class="pin-pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join("")}<span></span><button data-k="0">0</button><button data-k="del" aria-label="Effacer">⌫</button></div></div>`;
   document.body.appendChild(d); document.body.style.overflow="hidden";

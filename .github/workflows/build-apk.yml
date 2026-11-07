@@ -34,5 +34,5 @@ jobs:
         run: |
           TAG="build-${{ github.run_number }}"
           gh release create "$TAG" PanierCommun.apk \
-            --title "Panier Commun — compilation ${{ github.run_number }}" \
+            --title "Boutique Solidaire — compilation ${{ github.run_number }}" \
             --notes "APK compilé automatiquement depuis ${{ github.sha }}."

@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
                 pendingPerm.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
             } else {
                 pendingPerm.deny();
-                Toast.makeText(this, "Caméra refusée : autorisez-la dans Paramètres → Applications → Panier Commun", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Caméra refusée : autorisez-la dans Paramètres → Applications → Boutique Solidaire", Toast.LENGTH_LONG).show();
             }
             pendingPerm = null;
             return;
